@@ -1,0 +1,67 @@
+id: 2
+slug: "control_flow"
+title: "Boshqaruv Konstruksiyalari: if, switch va for"
+subtitle: "Control Flow: Conditions and Loops in Go"
+theory: |
+  🚀 **2-Dars: Shartlar va Tsikllar**
+
+  Go tilida kod oqimini boshqarish nihoyatda ixcham va sodda qilingan. Boshqa tillardagi ko'plab ortiqcha narsalar (masalan, `while`, `do-while`) olib tashlangan!
+
+  📌 **1. `if - else` va Qisqa ifoda (Short statement):**
+  Go'da `if` shartidan oldin o'zgaruvchi e'lon qilish mumkin:
+  ```go
+  if age := 18; age >= 18 {
+      fmt.Println("Xush kelibsiz!")
+  } else {
+      fmt.Println("Hali yoshsiz.")
+  }
+  // age o'zgaruvchisi faqat if-else blokida mavjud bo'ladi (Scope isolation).
+  ```
+
+  📌 **2. `switch` operatori:**
+  Go'da `break` yozish SHART EMAS! Har bir case avtomatik break bo'ladi.
+  ```go
+  day := "dushanba"
+  switch day {
+  case "shanba", "yakshanba":
+      fmt.Println("Dam olish kuni 🎉")
+  case "dushanba":
+      fmt.Println("Ish kuni boshlandi 💼")
+  default:
+      fmt.Println("Hafta o'rtasi ⏳")
+  }
+  ```
+
+  📌 **3. Yagona `for` tsikli:**
+  Go'da `while` yo'q, hamma turdagi tsikl `for` orqali qilinadi!
+  - **Klassik for:**
+    `for i := 0; i < 5; i++ { fmt.Println(i) }`
+  - **While o'rniga:**
+    `for count < 10 { count++ }`
+  - **Cheksiz tsikl (Infinite loop):**
+    `for { /* do something */ }`
+
+quiz:
+  question: "Go tilida `switch-case` bloklarida bitta case bajarilgandan so'ng keyingisiga o'tib ketmasligi uchun nima qilish kerak?"
+  options:
+    - "Har bir case oxiriga break yozish shart"
+    - "Hech narsa qilish shart emas, Go avtomatik to'xtaydi"
+    - "return yozish shart"
+    - "stop kalit so'zi ishlatiladi"
+  correct_option_id: 1
+  explanation: "Go tilida C yoki Java'dan farqli o'laroq, har bir case avtomatik ravishda to'xtaydi (break talab etilmaydi). Aksincha, keyingisiga ataylab o'tish uchun `fallthrough` kalit so'zi kerak bo'ladi."
+
+challenge:
+  title: "Go FizzBuzz Master!"
+  task: |
+    Klassik dasturchilik masalasi FizzBuzz'ni Go tilida yozing:
+    1 dan 30 gacha bo'lgan sonlarni `for` tsikli orqali tekshiring:
+    - Agar son 3 ga bo'linsa: `"Fizz"`
+    - Agar son 5 ga bo'linsa: `"Buzz"`
+    - Agar son 3 ga ham, 5 ga ham bo'linsa: `"FizzBuzz"`
+    - Bo'linmasa: sonning o'zini chiqaring.
+
+    Yechimingizni botga reply qilib guruhga yuboring! 🐹
+  hints:
+    - "Qoldiqni tekshirish uchun `%` operatori ishlatiladi: `i % 3 == 0`."
+    - "Eng birinchi bo'lib 3 ga ham, 5 ga ham bo'linish shartini (`i % 15 == 0`) tekshirishni unutmang!"

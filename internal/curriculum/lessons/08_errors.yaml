@@ -1,0 +1,65 @@
+id: 8
+slug: "errors"
+title: "Xatolar bilan Ishlash (Error Handling)"
+subtitle: "Explicit Error Checking, Wrapping & Custom Errors"
+theory: |
+  🚀 **8-Dars: Go'da Xatolar bilan Ishlash**
+
+  Go tilida istisnolar (`try - catch`) YO'Q. Xatoliklar — bu oddiy qiymatlardir (Errors are values).
+
+  📌 **1. `error` interfeysi:**
+  Go standart kutubxonasida `error` juda oddiy interfeys:
+  ```go
+  type error interface {
+      Error() string
+  }
+  ```
+
+  📌 **2. Idiomatik tekshirish:**
+  Funksiyalar natija bilan birga oxirgi argument sifatida `error` qaytaradi:
+  ```go
+  result, err := doSomething()
+  if err != nil {
+      log.Println("Xatolik yuz berdi:", err)
+      return err
+  }
+  // Bu yerda result bilan xavfsiz ishlaymiz
+  ```
+
+  📌 **3. Yangi xato yaratish va o'rash (Wrapping):**
+  - Oddiy: `errors.New("xatolik matni")`
+  - Format bilan: `fmt.Errorf("user %d topilmadi", userID)`
+  - O'rash (Wrap - xato sababini saqlash):
+    `fmt.Errorf("bazaga ulanishda xato: %w", err)` // %w flagi bilan
+  - Tekshirish: `errors.Is(err, sql.ErrNoRows)`
+
+  📌 **4. `panic` va `recover`:**
+  Faqat dastur umuman davom eta olmaydigan jiddiy halokatli holatlarda ishlatiladi. Kundalik xatoliklar uchun `panic` ISHLATILMAYDI!
+
+quiz:
+  question: "Go tilida xatoni o'rash (wrap) va asl xatolik zanjirini saqlab qolish uchun `fmt.Errorf` da qaysi format flagi ishlatiladi?"
+  options:
+    - "%v"
+    - "%s"
+    - "%w"
+    - "%e"
+  correct_option_id: 2
+  explanation: "Go 1.13 versiyasidan boshlab `fmt.Errorf` da `%w` verbi kiritilgan bo'lib, u xatolikni o'rab (wrap) beradi va keyinchalik `errors.Is` yoki `errors.As` orqali tekshirish imkonini yaratadi."
+
+challenge:
+  title: "Bankomat Xatolik Boshqaruvi (ATM Error Handler)"
+  task: |
+    Xatoliklar bilan professional ishlashni sinab ko'ring:
+    1. Maxsus xato konstantasini yarating:
+       `var ErrInsufficientFunds = errors.New("hisobda yetarli mablag' mavjud emas")`
+    2. Funksiya yozing:
+       `func withdraw(balance *int, amount int) error`
+       - Agar `amount <= 0` bo'lsa: `"yechish summasi musbat bo'lishi kerak"` xatosi qaytsin.
+       - Agar hisobda pul yetmasa: `ErrInsufficientFunds` qaytsin.
+       - Agar hammasi joyida bo'lsa: pulni ayirsin va `nil` qaytarsin.
+    3. `main` da `errors.Is` yordamida `ErrInsufficientFunds` holatini alohida tutib, guruhga chiroyli xabar chiqaring.
+
+    Kodingizni botga javob qilib yuboring! 🐹
+  hints:
+    - "`import \"errors\"` qilishni unutmang."
+    - "`if errors.Is(err, ErrInsufficientFunds) { ... }` orqali tekshiring."

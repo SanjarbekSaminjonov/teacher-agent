@@ -1,0 +1,24 @@
+# Secrets — HECH QACHON commit qilinmasin!
+.env
+
+# SQLite database (real user data)
+*.db
+*.db-shm
+*.db-wal
+
+# Compiled binary
+learn-go-bot
+
+# Go build cache
+*.test
+*.out
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

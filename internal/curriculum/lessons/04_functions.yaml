@@ -1,0 +1,75 @@
+id: 4
+slug: "functions"
+title: "Funksiyalar va Defer"
+subtitle: "Functions, Multiple Returns & Defer in Go"
+theory: |
+  🚀 **4-Dars: Go Funksiyalari va Defer Sehrlari**
+
+  Go tilida funksiyalar birinchi darajali fuqarolar (first-class citizens) hisoblanadi.
+
+  📌 **1. Bir nechta qiymat qaytarish (Multiple Return Values):**
+  Go'da funksiyalar birdaniga bir nechta qiymat (masalan, natija va xatolik) qaytara oladi:
+  ```go
+  func divide(a, b float64) (float64, string) {
+      if b == 0 {
+          return 0, "Nolga bo'lish mumkin emas!"
+      }
+      return a / b, ""
+  }
+  ```
+
+  📌 **2. O'zgaruvchan miqdordagi argumentlar (Variadic Functions):**
+  Ixtiyoriy sondagi argumentlarni qabul qilish:
+  ```go
+  func sum(numbers ...int) int {
+      total := 0
+      for _, n := range numbers {
+          total += n
+      }
+      return total
+  }
+  // sum(1, 2) yoki sum(10, 20, 30, 40) deb chaqirish mumkin.
+  ```
+
+  📌 **3. `defer` kalit so'zi:**
+  `defer` qilingan ifoda funksiya o'z ishini to'liq tugatib qaytayotgan paytda (return oldidan) ishlaydi. Resurslarni yopish (fayllar, bazalar, mutexlar) uchun ayni muddao!
+  - **Muhim:** Bir nechta `defer` bo'lsa, ular **LIFO** (Last In, First Out — oxirgi kirgan birinchi chiqadi) tartibida bajariladi:
+  ```go
+  func testDefer() {
+      defer fmt.Println("1-defer")
+      defer fmt.Println("2-defer")
+      fmt.Println("Asosiy kod")
+  }
+  // Natija:
+  // Asosiy kod
+  // 2-defer
+  // 1-defer
+  ```
+
+quiz:
+  question: "Bitta funksiya ichida 3 ta defer yozilgan bo'lsa: `defer A()`, `defer B()`, `defer C()`. Ular qanday tartibda bajariladi?"
+  options:
+    - "A, keyin B, keyin C (FIFO)"
+    - "C, keyin B, keyin A (LIFO)"
+    - "Random / Paralel tartibda"
+    - "Faqat birinchi e'lon qilingani bajariladi"
+  correct_option_id: 1
+  explanation: "Go tilida `defer` stek tamoyili (LIFO - Last In, First Out) bo'yicha ishlaydi. Eng oxirgi defer qilingan buyruq birinchi bo'lib ijro etiladi."
+
+challenge:
+  title: "Katta va Kichik Qiymatni Topish (Min-Max Helper)"
+  task: |
+    Quyidagi talab bo'yicha funksiya yozing:
+    - Funksiya nomi: `minMax(nums ...int) (int, int)`
+    - Funksiya ixtiyoriy miqdordagi butun sonlarni qabul qilsin.
+    - Funksiya ikkita qiymat qaytarsin: eng kichik (min) va eng katta (max) son.
+    - Agar hech qanday son berilmagan bo'lsa `0, 0` qaytarsin.
+
+    Misol:
+    `min, max := minMax(14, 3, 99, -5, 42)`
+    Ekranga: `Min: -5, Max: 99` chiqishi kerak.
+
+    Kodingizni botga javob qilib yuboring! 🐹
+  hints:
+    - "`nums` bo'shligini tekshirish: `if len(nums) == 0 { return 0, 0 }`"
+    - "Boshlang'ich qiymatlar sifatida `nums[0]` ni olib, qolganlarini `for` bilan tekshiring."

@@ -1,0 +1,70 @@
+id: 7
+slug: "interfaces"
+title: "Interfeyslar va Polimorfizm (Interfaces)"
+subtitle: "Implicit Implementation & Duck Typing in Go"
+theory: |
+  🚀 **7-Dars: Go Interfeyslari (Interfaces)**
+
+  Go tilida interfeyslar boshqa tillardan mutlaqo farq qiladi:
+  **"Agar biror narsa o'rdakdek suzsa va o'rdakdek vaysasa, u o'rdakdir"** (Duck typing).
+
+  📌 **1. Implicit (Noaniq/Avtomatik) Implementatsiya:**
+  Go'da `implements` kalit so'zi YO'Q! Agar sizning strukturangiz interfeys talab qilgan metodlarni yozgan bo'lsa, u avtomatik ravishda shu interfeys hisoblanadi.
+
+  ```go
+  type Greeter interface {
+      Greet() string
+  }
+
+  type Person struct {
+      Name string
+  }
+
+  // Person avtomatik Greeter bo'ladi:
+  func (p Person) Greet() string {
+      return "Salom, men " + p.Name
+  }
+  ```
+
+  📌 **2. Bo'sh Interfeys (`interface{}` yoki `any`):**
+  Go 1.18 dan boshlab `any` paydo bo'ldi (bu `interface{}` ning qisqartmasi). U har qanday turdagi qiymatni qabul qila oladi.
+
+  📌 **3. Type Assertion va Type Switch:**
+  `any` o'zgaruvchidan asl turni ajratib olish:
+  ```go
+  var val any = "Go tili"
+  str, ok := val.(string) // Type assertion
+
+  switch v := val.(type) { // Type switch
+  case string:
+      fmt.Println("String:", v)
+  case int:
+      fmt.Println("Son:", v)
+  }
+  ```
+
+quiz:
+  question: "Go tilida struktura qanday qilib interfeysni implement qiladi?"
+  options:
+    - "type MyStruct struct implements MyInterface deb yozish orqali"
+    - "Interfeysda belgilangan barcha metodlarni yozish orqali avtomatik (implicit)"
+    - "Go'da interfeyslar mavjud emas"
+    - "@Override annotatsiyasi orqali"
+  correct_option_id: 1
+  explanation: "Go tilida hech qanday maxsus kalit so'z (implements) talab etilmaydi. Agar struktura interfeysdagi metodlarni to'liq o'zida ifodalasa, u avtomatik tarzda shu interfeysni implement qilgan hisoblanadi."
+
+challenge:
+  title: "To'lov Tizimi Polimorfizmi (Payment Gateway)"
+  task: |
+    Polimorfizm kuchini sinab ko'rish uchun to'lov tizimini yarating:
+    1. `PaymentMethod` interfeysi: `Pay(amount float64) string` metodiga ega bo'lsin.
+    2. Ikkita struktura tuzing:
+       - `Payme` (`CardNumber string`)
+       - `Click` (`PhoneNumber string`)
+    3. Ikkala strukturaga ham `Pay(amount float64) string` metodini yozing (masalan: `"[amount] so'm Payme orqali to'landi"`).
+    4. Alohida `ProcessPayment(p PaymentMethod, amount float64)` funksiyasi yozib, ikkala to'lov usulini ham undan o'tkazing.
+
+    Kodingizni botga javob qilib yuboring! 🐹
+  hints:
+    - "`ProcessPayment` funksiyasi argument sifatida `PaymentMethod` interfeysini oladi."
+    - "`Pay` metodi string qaytarsin va uni ekranga chiqaring."

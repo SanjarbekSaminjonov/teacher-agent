@@ -1,0 +1,63 @@
+id: 1
+slug: "basics"
+title: "Go Asoslari: O'zgaruvchilar va Ma'lumot Turlari"
+subtitle: "Variables, Constants & Data Types in Go"
+theory: |
+  🚀 **1-Dars: Go Tiliga Xush Kelibsiz!**
+
+  Go (yoki Golang) — Google tomonidan yaratilgan, sodda, kuchli va juda tezkor kompilyatsiya qilinadigan dasturlash tilidir.
+
+  📌 **1. Go Dasturi Strukturasi:**
+  Har bir Go dasturi `package`dan boshlanadi. Dasturning kirish nuqtasi — bu har doim `main` paketi va `main()` funksiyasidir.
+
+  ```go
+  package main
+
+  import "fmt"
+
+  func main() {
+      fmt.Println("Salom, Go olami! 🐹")
+  }
+  ```
+
+  📌 **2. O'zgaruvchilarni e'lon qilish (Declaration):**
+  Go tilida o'zgaruvchilarni bir necha usulda e'lon qilish mumkin:
+
+  - **`var` kalit so'zi bilan:**
+    `var name string = "Ali"`
+    `var age int = 25`
+  - **Qisqa e'lon qilish (Short variable declaration `:=`):**
+    Faqat funksiya ichida ishlaydi, turini Go o'zi aniqlab oladi (*Type Inference*):
+    `city := "Toshkent"`  // string
+    `score := 95.5`        // float64
+    `isActive := true`     // bool
+
+  📌 **3. Konstantalar (`const`):**
+  Qiymati keyinchalik o'zgarmaydigan o'zgaruvchilar:
+  `const Pi = 3.1415`
+
+  💡 **Muhim qoida:** Go tilida e'lon qilingan o'zgaruvchi albatta ishlatilishi shart! Ishlatilmagan o'zgaruvchi kompilyatsiya xatosini beradi (*unused variable error*).
+
+quiz:
+  question: "Go tilida funksiya ichida qisqa e'lon qilish (short variable declaration) uchun qaysi sintaksis ishlatiladi?"
+  options:
+    - "var x = 10"
+    - "x := 10"
+    - "let x = 10"
+    - "x = 10"
+  correct_option_id: 1
+  explanation: "Go tilida funksiyalar ichida turini avtomatik aniqlaydigan qisqa e'lon qilish uchun `:=` operatori ishlatiladi. `let` Go'da mavjud emas, `var` esa to'liq e'lon qilish usulidir."
+
+challenge:
+  title: "Mini Dasturchi Profilini Tuzing!"
+  task: |
+    Kompyuteringizda yoki playground'da kichik Go dasturi yozing:
+    1. O'zingizning ismingizni (`name`), yoshingizni (`age`) va maqsadingizni (`goal`) ifodalovchi o'zgaruvchilar e'lon qiling (`:=` ishlatib ko'ring).
+    2. 5 yildan keyingi yoshingizni hisoblang (`age + 5`).
+    3. `fmt.Printf` orqali quyidagi formatda ekranga chiqaring:
+       `"Mening ismim [name], yoshim [age]da. 5 yildan keyin [future_age] yoshda bo'laman va maqsadim: [goal]!"`
+
+    Yozgan kodingizni ushbu xabarga javob (reply) qilib guruhga yuboring! 🤖 AI uni darhol tekshirib, fikr bildiradi.
+  hints:
+    - "fmt.Printf da matn uchun `%s`, butun son uchun `%d` formatlovchi belgilaridan foydalaning."
+    - "Misol: fmt.Printf(\"Salom %s, yoshingiz %d da\\n\", name, age)"

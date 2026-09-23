@@ -1,0 +1,58 @@
+id: 5
+slug: "pointers"
+title: "Ko'rsatkichlar (Pointers)"
+subtitle: "Memory Addresses, Dereferencing & Pointers in Go"
+theory: |
+  🚀 **5-Dars: Go Ko'rsatkichlari (Pointers)**
+
+  Ko'rsatkich (Pointer) — bu o'zgaruvchining xotiradagi manzilini (memory address) o'zida saqlovchi o'zgaruvchidir.
+
+  📌 **1. Asosiy operatorlar:**
+  - `&` (Address-of): O'zgaruvchining xotiradagi manzilini oladi.
+  - `*` (Dereference): Ko'rsatkich turgan manzildagi qiymatni o'qiydi yoki o'zgartiradi.
+
+  ```go
+  x := 42
+  p := &x  // p ning turi: *int (x ning xotira manzili)
+
+  fmt.Println("Xotira manzili:", p)  // Masalan: 0xc000018090
+  fmt.Println("Manzildagi qiymat:", *p) // 42
+
+  *p = 100 // xotiradagi qiymatni to'g'ridan-to'g'ri o'zgartiramiz
+  fmt.Println("Yangi x:", x) // 100
+  ```
+
+  📌 **2. Nima uchun Pointer kerak?**
+  Go'da funksiyaga argument berilganda, standart holatda uning **nusxasi (copy)** uzatiladi (Pass by value).
+  Agar katta hajmli strukturani har safar nusxalamasdan xotirani tejash yoki funksiya ichidan turib tashqi qiymatni o'zgartirmoqchi bo'lsak, pointer uzatamiz:
+  ```go
+  func double(val *int) {
+      *val = *val * 2
+  }
+  ```
+
+  💡 **Eslatma:** C/C++ tillaridan farqli o'laroq, Go'da pointer arifmetikasi (masalan, `p++`) yo'q! Bu xavfsizlikni ta'minlaydi.
+
+quiz:
+  question: "Quyidagi kod natijasi nima bo'ladi?\n```go\na := 10\np := &a\n*p = 25\nfmt.Println(a)\n```"
+  options:
+    - "10"
+    - "25"
+    - "0xc0000... (xotira manzili)"
+    - "Kompilyatsiya xatoligi"
+  correct_option_id: 1
+  explanation: "`*p = 25` ifodasi `p` ko'rsatkich yo'nalgan xotira manziliga (ya'ni `a` o'zgaruvchisiga) to'g'ridan-to'g'ri 25 qiymatini yozadi. Shu sababli `a` ning qiymati 25 ga aylanadi."
+
+challenge:
+  title: "Bank Balansini O'zgartiruvchi Funksiya"
+  task: |
+    Quyidagi talablarga muvofiq pointer bilan ishlovchi funksiyalar yozing:
+    1. `func deposit(balance *int, amount int)` — hisobga pul qo'shsin.
+    2. `func withdraw(balance *int, amount int) bool` — hisobdan pul yechsin. Agar mablag' yetarli bo'lsa pulni ayirib `true`, yetarli bo'lmasa ayirmasdan `false` qaytarsin.
+
+    `main` funksiyasida `bal := 1000` yaratib, unga 500 qo'shib, keyin 300 yechib balans o'zgarishini ko'rsating.
+
+    Kodingizni ushbu postga javob qilib yuboring! 🐹
+  hints:
+    - "Balansni o'zgartirish uchun `*balance += amount` deb yoziladi."
+    - "Yechishda tekshirish: `if *balance < amount { return false }`"

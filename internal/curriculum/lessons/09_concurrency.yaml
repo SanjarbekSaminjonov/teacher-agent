@@ -1,0 +1,62 @@
+id: 9
+slug: "concurrency"
+title: "Konkurentlik: Goroutinalar va Kanallar"
+subtitle: "Goroutines, Channels & WaitGroups in Go"
+theory: |
+  🚀 **9-Dars: Go'ning Eng Kuchli Jihati — Concurrency!**
+
+  Go tilining dunyoga mashhurligining asosiy sababi — yengil va tezkor konkurentlikdir (Concurrency).
+
+  📌 **1. Goroutinalar (`go func()`):**
+  Goroutina — bu OS oqimi (OS thread) emas, Go runtime tomonidan boshqariladigan juda yengil (atigi ~2KB boshlang'ich xotira oladigan) "oqim"dir.
+  ```go
+  go doWork() // Orqa fonda parallel ishga tushadi
+  ```
+
+  📌 **2. `sync.WaitGroup`:**
+  Asosiy `main` funksiya goroutinalar tugashini kutib turishi uchun ishlatiladi:
+  ```go
+  var wg sync.WaitGroup
+  wg.Add(1)
+  go func() {
+      defer wg.Done()
+      // ish bajariladi
+  }()
+  wg.Wait() // Barcha goroutinalar Done bo'lishini kutadi
+  ```
+
+  📌 **3. Kanallar (Channels) — Goroutinalararo aloqa:**
+  "Xotirani bo'lishish orqali aloqa qilmang, balki aloqa qilish orqali xotirani bo'lishing."
+  - Kanal ochish: `ch := make(chan int)`
+  - Ma'lumot yuborish: `ch <- 42`
+  - Ma'lumot qabul qilish: `val := <-ch`
+  - Yopish: `close(ch)`
+
+  📌 **4. Buffered vs Unbuffered Channels:**
+  - `make(chan int)` — qabul qiluvchi kutib turmaguncha yuboruvchi bloklanadi (sinxron).
+  - `make(chan int, 3)` — bufer to'lmaguncha bloklanmaydi (asinxron).
+
+quiz:
+  question: "Yopilgan (closed) kanalga yangi ma'lumot yuborishga (`ch <- value`) harakat qilinsa nima yuz beradi?"
+  options:
+    - "Ma'lumot shunchaki e'tiborsiz qoldiriladi"
+    - "Dastur panic xatoligi bilan qulaydi (panic: send on closed channel)"
+    - "Kanal avtomatik qayta ochiladi"
+    - "Kanal nil qiymat qaytaradi"
+  correct_option_id: 1
+  explanation: "Go tilida yopilgan kanalga yozish qat'iy taqiqlangan va dastur darhol `panic: send on closed channel` xatoligi bilan to'xtaydi. Yopilgan kanaldan esa qolgan ma'lumotlarni o'qish mumkin."
+
+challenge:
+  title: "Parallel Kvadratlar Hisoblagichi"
+  task: |
+    Goroutina va kanallardan foydalanib dastur tuzing:
+    1. Sonlar slayti: `nums := []int{2, 4, 6, 8, 10}`
+    2. Natijalar uchun kanal: `results := make(chan int, len(nums))`
+    3. `for` orqali har bir sonning kvadratini alohida goroutinada hisoblab, natijani kanalga yuboring.
+    4. Barcha goroutinalar tugashini `sync.WaitGroup` orqali muvofiqlashtiring.
+    5. Asosiy oqimda natijalar kanalini o'qib, ekranga chiqaring.
+
+    Kodingizni ushbu postga javob qilib yuboring! 🐹
+  hints:
+    - "Goroutinaga qiymat uzatayotganda tsikl o'zgaruvchisini parametr sifatida bering: `go func(n int) { ... }(num)`"
+    - "`wg.Wait()` dan so'ng kanalni `close(results)` qiling va `for res := range results` orqali o'qing."

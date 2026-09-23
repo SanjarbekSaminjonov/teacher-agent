@@ -1,0 +1,67 @@
+id: 6
+slug: "structs"
+title: "Strukturalar va Metodlar (Structs & Methods)"
+subtitle: "Structs, Custom Types & Receivers in Go"
+theory: |
+  🚀 **6-Dars: Go'da Obyektlar va Metodlar (OOP Usuli)**
+
+  Go tilida klasslar (classes) va merosxo'rlik (inheritance) yo'q. Uning o'rniga Strukturalar (`struct`) va Kompozitsiya (Composition) ishlatiladi.
+
+  📌 **1. Struct e'lon qilish:**
+  ```go
+  type User struct {
+      Name  string
+      Email string
+      Age   int
+  }
+
+  u := User{Name: "Bobur", Email: "bobur@mail.uz", Age: 23}
+  ```
+
+  📌 **2. Metodlar (Methods on Structs):**
+  Funksiyadan farqli o'laroq, metod ma'lum bir turga (type) bog'lanadi (Receiver orqali):
+  - **Value Receiver:** Strukturani faqat o'qiydi (nusxasi uzatiladi).
+  ```go
+  func (u User) SayHello() {
+      fmt.Printf("Salom, mening ismim %s!\n", u.Name)
+  }
+  ```
+  - **Pointer Receiver:** Strukturani ichidagi ma'lumotlarni o'zgartira oladi.
+  ```go
+  func (u *User) Birthday() {
+      u.Age++ // Strukturadagi yoshni oshiradi
+  }
+  ```
+
+  📌 **3. Struct Embedding (Kompozitsiya):**
+  Bir strukturani boshqa struktura ichiga to'g'ridan-to'g'ri joylash:
+  ```go
+  type Admin struct {
+      User  // User maydonlari to'g'ridan-to'g'ri Adminga o'tadi
+      Role  string
+  }
+  ```
+
+quiz:
+  question: "Qachon metod uchun `Pointer Receiver` (masalan: `(u *User)`) ishlatish majburiy bo'ladi?"
+  options:
+    - "Metod ichida strukturaning maydonlarini o'zgartirish kerak bo'lganda"
+    - "Hech qachon shart emas, ixtiyoriy"
+    - "Faqat struktura 5 tadan ortiq maydonga ega bo'lsa"
+    - "Faqat string maydonlar mavjud bo'lganda"
+  correct_option_id: 0
+  explanation: "Agar metod strukturaning maydonlarini o'zgartirishi kerak bo'lsa yoki katta hajmli strukturani xotirada nusxalamaslik talab etilsa, Pointer Receiver `*T` ishlatiladi."
+
+challenge:
+  title: "Talabalar Baholarini Hisoblash Tizimi"
+  task: |
+    Quyidagi talablarga mos struktura va metodlar yozing:
+    1. `Student` strukturasi: `Name` (string) va `Scores` ([]int - baholar ro'yxati) maydonlariga ega bo'lsin.
+    2. `(s *Student) AddScore(score int)` metodi: yangi bahoni slaytga qo'shsin.
+    3. `(s Student) Average() float64` metodi: baholarning o'rtacha arifmetik qiymatini hisoblab bersin.
+    4. `main` da student yaratib, unga bir nechta baho qo'shing va o'rtacha ballni chiqaring.
+
+    Yozgan kodingizni botga javob qilib yuboring! 🐹
+  hints:
+    - "`Average()` da baholar yig'indisini hisoblab, `float64(sum) / float64(len(s.Scores))` deb bo'ling."
+    - "`AddScore` metodida pointer receiver bo'lishi kerak, chunki slayt o'zgaradi."

@@ -1,0 +1,80 @@
+id: 10
+slug: "web_basics"
+title: "Standart Kutubxona va REST API Asoslari"
+subtitle: "net/http, JSON Encoding & Building a Microservice in Go"
+theory: |
+  🚀 **10-Dars: Go Bilan Veb Dasturlash va REST API**
+
+  Go tilining eng katta yutuqlaridan biri — hech qanday tashqi kutubxonasiz (framework'larsiz) kuchli HTTP server qura olishidir.
+
+  📌 **1. `net/http` bilan HTTP Server:**
+  ```go
+  package main
+
+  import (
+      "fmt"
+      "net/http"
+  )
+
+  func helloHandler(w http.ResponseWriter, r *http.Request) {
+      fmt.Fprintf(w, "Salom Go API!")
+  }
+
+  func main() {
+      http.HandleFunc("/hello", helloHandler)
+      fmt.Println("Server :8080 portda ishga tushdi...")
+      http.ListenAndServe(":8080", nil)
+  }
+  ```
+
+  📌 **2. JSON bilan Ishlash (`encoding/json`):**
+  Strukturalarni JSON ga o'girish (Marshal) va JSON dan strukturaga o'girish (Unmarshal):
+  ```go
+  type Course struct {
+      Title string `json:"title"`
+      Price int    `json:"price"`
+  }
+
+  // JSON ga aylantirish:
+  c := Course{Title: "Go Bootcamp", Price: 0}
+  data, _ := json.Marshal(c)
+  ```
+
+  📌 **3. JSON API Response qaytarish:**
+  ```go
+  func courseHandler(w http.ResponseWriter, r *http.Request) {
+      w.Header().Set("Content-Type", "application/json")
+      json.NewEncoder(w).Encode(c)
+  }
+  ```
+
+quiz:
+  question: "Go tilida struktura maydonini JSON ga o'girganda kichik harflarda chiqishi uchun qanday sintaksis ishlatiladi?"
+  options:
+    - "`json:\"title\"` struct tag orqali"
+    - "Maydon nomini kichik harf bilan boshlash orqali"
+    - "Go'da barcha JSON kalitlari avtomatik katta harf bo'ladi"
+    - "json.ToLowerCase() funksiyasi orqali"
+  correct_option_id: 0
+  explanation: "Go tilida eksport qilinadigan (tashqariga ko'rinadigan) maydonlar Katta harf bilan boshlanishi shart (`Title`). Ularning JSON dagi nomini boshqarish uchun esa struct taglari: `json:\"title\"` ishlatiladi."
+
+challenge:
+  title: "Go Tilida Mini Ping-Pong REST API"
+  task: |
+    Go standart kutubxonasi yordamida kichik HTTP server tuzing:
+    1. `/ping` endpointini yarating.
+    2. Unga `GET` so'rovi kelganda, quyidagi ko'rinishdagi JSON qaytarsin:
+       ```json
+       {
+         "status": "healthy",
+         "message": "Go server ishlayapti 🐹",
+         "timestamp": 1720000000
+       }
+       ```
+    3. `Content-Type: application/json` sarlavhasini (header) qo'shishni unutmang.
+
+    Kodingizni botga javob qilib yuboring! 🐹
+  hints:
+    - "`type StatusResponse struct { Status string `json:\"status\"`; ... }` tuzing."
+    - "`w.Header().Set(\"Content-Type\", \"application/json\")`"
+    - "`json.NewEncoder(w).Encode(resp)`"

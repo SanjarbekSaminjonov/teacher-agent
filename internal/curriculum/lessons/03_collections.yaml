@@ -1,0 +1,75 @@
+id: 3
+slug: "collections"
+title: "To'plamlar: Massivlar, Slaytlar va Map"
+subtitle: "Arrays, Slices and Maps in Go"
+theory: |
+  🚀 **3-Dars: Go'da Ma'lumotlar To'plami**
+
+  Go tilida asosan 3 xil ma'lumotlar to'plami ishlatiladi: Array, Slice va Map.
+
+  📌 **1. Massivlar (Arrays):**
+  O'lchami qat'iy belgilangan va o'zgarmas bo'ladi:
+  `var arr [3]int = [3]int{10, 20, 30}`
+  O'lcham tipning bir qismi hisoblanadi (`[3]int` va `[4]int` butunlay boshqa tiplar).
+
+  📌 **2. Slaytlar (Slices) — Eng ko'p ishlatiladigani:**
+  Slayt bu dinamik o'lchamli massiv bo'lib, uning tagida massiv (underlying array) yotadi.
+  - E'lon qilish:
+    `s := []string{"Go", "Python", "Rust"}`
+    `numbers := make([]int, 0, 10)` // len=0, cap=10
+  - Element qo'shish (`append`):
+    `numbers = append(numbers, 42)`
+  - Slayt qirqish:
+    `sub := s[1:3]` // indeks 1 dan 3 gacha (3 kirmaydi)
+
+  📌 **3. Lug'atlar (Maps — Hash Table):**
+  Kalit-qiymat (Key-Value) juftligi:
+  ```go
+  ages := make(map[string]int)
+  ages["Ali"] = 24
+  ages["Vali"] = 28
+
+  // Qiymat borligini tekshirish ("comma ok" idiomi):
+  age, exists := ages["Ali"]
+  if exists {
+      fmt.Println("Ali yoshi:", age)
+  }
+
+  // O'chirish:
+  delete(ages, "Ali")
+  ```
+
+  📌 **4. `for - range` tsikli:**
+  Slayt yoki Map ustida aylanishning eng qulay usuli:
+  ```go
+  for index, val := range numbers { ... }
+  for key, value := range ages { ... }
+  ```
+
+quiz:
+  question: "Slaytda `make([]int, 3, 5)` deb e'lon qilganda, `len` va `cap` qiymatlari mos ravishda qanday bo'ladi?"
+  options:
+    - "len = 5, cap = 3"
+    - "len = 3, cap = 5"
+    - "len = 3, cap = 3"
+    - "len = 0, cap = 5"
+  correct_option_id: 1
+  explanation: "`make([]T, len, cap)` sintaksisida birinchi son uzunlik (len=3), ikkinchi son esa sig'im (cap=5) hisoblanadi."
+
+challenge:
+  title: "So'zlar Statistikasi (Word Count Map)"
+  task: |
+    Berilgan so'zlar ro'yxatida har bir so'z necha marta qatnashganini hisoblaydigan dastur yozing:
+    ```go
+    words := []string{"go", "python", "go", "java", "go", "python", "rust"}
+    ```
+    Natija `map[string]int` ko'rinishida bo'lsin va `for range` orqali quyidagicha ekranga chiqsin:
+    - `go: 3`
+    - `python: 2`
+    - `java: 1`
+    - `rust: 1`
+
+    Yechimingizni botga javob qilib yuboring! 🐹
+  hints:
+    - "Bo'sh map yarating: `counts := make(map[string]int)`"
+    - "Slaytni aylanish jarayonida: `counts[word]++` deb qiymatni oshirib boring."
