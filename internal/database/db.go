@@ -45,6 +45,7 @@ func (d *DB) initTables() error {
 			score INTEGER DEFAULT 0,
 			quizzes_solved INTEGER DEFAULT 0,
 			challenges_solved INTEGER DEFAULT 0,
+			is_left BOOLEAN DEFAULT 0,
 			updated_at TIMESTAMP
 		);`,
 		`CREATE TABLE IF NOT EXISTS group_state (
@@ -61,6 +62,7 @@ func (d *DB) initTables() error {
 			paused_date TEXT DEFAULT '',
 			weekend_wish_sent BOOLEAN DEFAULT 0,
 			deadline_announced BOOLEAN DEFAULT 0,
+			icebreaker_sent BOOLEAN DEFAULT 0,
 			updated_at TIMESTAMP
 		);`,
 		`CREATE TABLE IF NOT EXISTS quiz_attempts (
@@ -120,6 +122,8 @@ func (d *DB) initTables() error {
 	_, _ = d.db.Exec(`ALTER TABLE group_state ADD COLUMN paused_date TEXT DEFAULT '';`)
 	_, _ = d.db.Exec(`ALTER TABLE group_state ADD COLUMN weekend_wish_sent BOOLEAN DEFAULT 0;`)
 	_, _ = d.db.Exec(`ALTER TABLE group_state ADD COLUMN deadline_announced BOOLEAN DEFAULT 0;`)
+	_, _ = d.db.Exec(`ALTER TABLE group_state ADD COLUMN icebreaker_sent BOOLEAN DEFAULT 0;`)
+	_, _ = d.db.Exec(`ALTER TABLE users ADD COLUMN is_left BOOLEAN DEFAULT 0;`)
 
 	return nil
 }
@@ -146,6 +150,7 @@ func (d *DB) GetOrCreateUser(telegramID int64, username, firstName string) (*Use
 		ON CONFLICT(telegram_id) DO UPDATE SET
 			username = excluded.username,
 			first_name = excluded.first_name,
+			is_left = 0,
 			updated_at = excluded.updated_at;
 	`, telegramID, username, firstName, now)
 	if err != nil {
@@ -155,12 +160,25 @@ func (d *DB) GetOrCreateUser(telegramID int64, username, firstName string) (*Use
 	return d.getUserUnsafe(telegramID)
 }
 
+func (d *DB) MarkUserLeft(telegramID int64) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	_, err := d.db.Exec(`
+		UPDATE users
+		SET is_left = 1,
+		    updated_at = ?
+		WHERE telegram_id = ?
+	`, time.Now(), telegramID)
+	return err
+}
+
 func (d *DB) getUserUnsafe(telegramID int64) (*User, error) {
 	var u User
 	err := d.db.QueryRow(`
-		SELECT telegram_id, username, first_name, score, quizzes_solved, challenges_solved, updated_at
+		SELECT telegram_id, username, first_name, score, quizzes_solved, challenges_solved, is_left, updated_at
 		FROM users WHERE telegram_id = ?
-	`, telegramID).Scan(&u.TelegramID, &u.Username, &u.FirstName, &u.Score, &u.QuizzesSolved, &u.ChallengesSolved, &u.UpdatedAt)
+	`, telegramID).Scan(&u.TelegramID, &u.Username, &u.FirstName, &u.Score, &u.QuizzesSolved, &u.ChallengesSolved, &u.IsLeft, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -191,6 +209,7 @@ func (d *DB) AddScore(telegramID int64, points int, isQuiz bool, isChallenge boo
 		SET score = score + ?,
 		    quizzes_solved = quizzes_solved + ?,
 		    challenges_solved = challenges_solved + ?,
+		    is_left = 0,
 		    updated_at = ?
 		WHERE telegram_id = ?
 	`, points, quizInc, challengeInc, time.Now(), telegramID)
@@ -202,9 +221,10 @@ func (d *DB) GetTopUsers(limit int) ([]User, error) {
 	defer d.mu.RUnlock()
 
 	rows, err := d.db.Query(`
-		SELECT telegram_id, username, first_name, score, quizzes_solved, challenges_solved, updated_at
+		SELECT telegram_id, username, first_name, score, quizzes_solved, challenges_solved, is_left, updated_at
 		FROM users
-		ORDER BY score DESC, quizzes_solved DESC
+		WHERE is_left = 0
+		ORDER BY score DESC, quizzes_solved DESC, challenges_solved DESC
 		LIMIT ?
 	`, limit)
 	if err != nil {
@@ -215,7 +235,7 @@ func (d *DB) GetTopUsers(limit int) ([]User, error) {
 	var users []User
 	for rows.Next() {
 		var u User
-		if err := rows.Scan(&u.TelegramID, &u.Username, &u.FirstName, &u.Score, &u.QuizzesSolved, &u.ChallengesSolved, &u.UpdatedAt); err != nil {
+		if err := rows.Scan(&u.TelegramID, &u.Username, &u.FirstName, &u.Score, &u.QuizzesSolved, &u.ChallengesSolved, &u.IsLeft, &u.UpdatedAt); err != nil {
 			return nil, err
 		}
 		users = append(users, u)
@@ -228,9 +248,9 @@ func (d *DB) GetInactiveUsers(excludeTelegramID int64, limit int) ([]User, error
 	defer d.mu.RUnlock()
 
 	rows, err := d.db.Query(`
-		SELECT telegram_id, username, first_name, score, quizzes_solved, challenges_solved, updated_at
+		SELECT telegram_id, username, first_name, score, quizzes_solved, challenges_solved, is_left, updated_at
 		FROM users
-		WHERE telegram_id != ?
+		WHERE telegram_id != ? AND is_left = 0 AND username != ''
 		ORDER BY quizzes_solved ASC, challenges_solved ASC, updated_at ASC
 		LIMIT ?
 	`, excludeTelegramID, limit)
@@ -242,7 +262,39 @@ func (d *DB) GetInactiveUsers(excludeTelegramID int64, limit int) ([]User, error
 	var users []User
 	for rows.Next() {
 		var u User
-		if err := rows.Scan(&u.TelegramID, &u.Username, &u.FirstName, &u.Score, &u.QuizzesSolved, &u.ChallengesSolved, &u.UpdatedAt); err != nil {
+		if err := rows.Scan(&u.TelegramID, &u.Username, &u.FirstName, &u.Score, &u.QuizzesSolved, &u.ChallengesSolved, &u.IsLeft, &u.UpdatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, nil
+}
+
+func (d *DB) GetUnsubmittedUsersForToday(lessonID int, excludeTelegramID int64, limit int) ([]User, error) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	today := time.Now().Format("2006-01-02")
+	rows, err := d.db.Query(`
+		SELECT u.telegram_id, u.username, u.first_name, u.score, u.quizzes_solved, u.challenges_solved, u.is_left, u.updated_at
+		FROM users u
+		WHERE u.telegram_id != ? AND u.username != '' AND u.is_left = 0
+		  AND u.telegram_id NOT IN (
+			SELECT telegram_id FROM challenge_submissions
+			WHERE lesson_id = ? AND substr(submitted_at, 1, 10) = ?
+		  )
+		ORDER BY u.score ASC, u.updated_at ASC
+		LIMIT ?
+	`, excludeTelegramID, lessonID, today, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []User
+	for rows.Next() {
+		var u User
+		if err := rows.Scan(&u.TelegramID, &u.Username, &u.FirstName, &u.Score, &u.QuizzesSolved, &u.ChallengesSolved, &u.IsLeft, &u.UpdatedAt); err != nil {
 			return nil, err
 		}
 		users = append(users, u)
@@ -258,13 +310,13 @@ func (d *DB) GetOrCreateGroupState(chatID int64, title string) (*GroupState, err
 	err := d.db.QueryRow(`
 		SELECT chat_id, group_title, current_lesson_id, lesson_date, morning_sent,
 		       afternoon_quiz_sent, evening_challenge_sent, nudge_sent,
-		       last_quiz_poll_id, last_challenge_message_id, paused_date, weekend_wish_sent, deadline_announced, updated_at
+		       last_quiz_poll_id, last_challenge_message_id, paused_date, weekend_wish_sent, deadline_announced, icebreaker_sent, updated_at
 		FROM group_state WHERE chat_id = ?
 	`, chatID).Scan(
 		&state.ChatID, &state.GroupTitle, &state.CurrentLessonID, &state.LessonDate,
 		&state.MorningSent, &state.AfternoonQuizSent, &state.EveningChallengeSent,
 		&state.NudgeSent, &state.LastQuizPollID, &state.LastChallengeMessageID,
-		&state.PausedDate, &state.WeekendWishSent, &state.DeadlineAnnounced, &state.UpdatedAt,
+		&state.PausedDate, &state.WeekendWishSent, &state.DeadlineAnnounced, &state.IcebreakerSent, &state.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -277,11 +329,12 @@ func (d *DB) GetOrCreateGroupState(chatID int64, title string) (*GroupState, err
 			PausedDate:        "",
 			WeekendWishSent:   false,
 			DeadlineAnnounced: false,
+			IcebreakerSent:    false,
 			UpdatedAt:         now,
 		}
 		_, insertErr := d.db.Exec(`
-			INSERT INTO group_state (chat_id, group_title, current_lesson_id, lesson_date, paused_date, weekend_wish_sent, deadline_announced, updated_at)
-			VALUES (?, ?, 1, '', '', 0, 0, ?)
+			INSERT INTO group_state (chat_id, group_title, current_lesson_id, lesson_date, paused_date, weekend_wish_sent, deadline_announced, icebreaker_sent, updated_at)
+			VALUES (?, ?, 1, '', '', 0, 0, 0, ?)
 		`, chatID, title, now)
 		if insertErr != nil {
 			return nil, insertErr
@@ -301,7 +354,7 @@ func (d *DB) GetAllGroupStates() ([]GroupState, error) {
 	rows, err := d.db.Query(`
 		SELECT chat_id, group_title, current_lesson_id, lesson_date, morning_sent,
 		       afternoon_quiz_sent, evening_challenge_sent, nudge_sent,
-		       last_quiz_poll_id, last_challenge_message_id, paused_date, weekend_wish_sent, deadline_announced, updated_at
+		       last_quiz_poll_id, last_challenge_message_id, paused_date, weekend_wish_sent, deadline_announced, icebreaker_sent, updated_at
 		FROM group_state
 	`)
 	if err != nil {
@@ -316,7 +369,7 @@ func (d *DB) GetAllGroupStates() ([]GroupState, error) {
 			&s.ChatID, &s.GroupTitle, &s.CurrentLessonID, &s.LessonDate,
 			&s.MorningSent, &s.AfternoonQuizSent, &s.EveningChallengeSent,
 			&s.NudgeSent, &s.LastQuizPollID, &s.LastChallengeMessageID,
-			&s.PausedDate, &s.WeekendWishSent, &s.DeadlineAnnounced, &s.UpdatedAt,
+			&s.PausedDate, &s.WeekendWishSent, &s.DeadlineAnnounced, &s.IcebreakerSent, &s.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -344,11 +397,12 @@ func (d *DB) UpdateGroupState(s *GroupState) error {
 		    paused_date = ?,
 		    weekend_wish_sent = ?,
 		    deadline_announced = ?,
+		    icebreaker_sent = ?,
 		    updated_at = ?
 		WHERE chat_id = ?
 	`, s.GroupTitle, s.CurrentLessonID, s.LessonDate, s.MorningSent,
 		s.AfternoonQuizSent, s.EveningChallengeSent, s.NudgeSent,
-		s.LastQuizPollID, s.LastChallengeMessageID, s.PausedDate, s.WeekendWishSent, s.DeadlineAnnounced, s.UpdatedAt, s.ChatID)
+		s.LastQuizPollID, s.LastChallengeMessageID, s.PausedDate, s.WeekendWishSent, s.DeadlineAnnounced, s.IcebreakerSent, s.UpdatedAt, s.ChatID)
 	return err
 }
 
@@ -597,23 +651,32 @@ func (d *DB) GetDayStats(dateStr string) (*DayStats, error) {
 	return stats, nil
 }
 
-func (d *DB) GetStudyContext(chatID int64, lessonID int, lessonTitle, officialChallengeTitle, officialChallengeTask string, challengeSent bool, currentUserID int64, currentUserName string) (*StudyContext, error) {
+func (d *DB) GetStudyContext(chatID int64, lessonID int, lessonTitle, prevLessonTitle, officialChallengeTitle, officialChallengeTask string, morningSent, quizSent, challengeSent, deadlineAnnounced bool, currentUserID int64, currentUserName string) (*StudyContext, error) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
-	today := time.Now().Format("2006-01-02")
+	now := time.Now()
+	today := now.Format("2006-01-02")
+	timeStr := now.Format("15:04")
+
 	ctx := &StudyContext{
+		CurrentDate:            today,
+		CurrentTime:            timeStr,
 		LessonID:               lessonID,
 		LessonTitle:            lessonTitle,
+		PreviousLessonTitle:    prevLessonTitle,
+		MorningSent:            morningSent,
+		QuizSent:               quizSent,
 		OfficialChallengeTitle: officialChallengeTitle,
 		OfficialChallengeTask:  officialChallengeTask,
 		ChallengeSent:          challengeSent,
+		DeadlineAnnounced:      deadlineAnnounced,
 		CurrentUserName:        currentUserName,
 		Submitters:             make([]SubmitterInfo, 0),
 		UnsubmittedNames:       make([]string, 0),
 	}
 
-	// 1. Submissions for this lesson today (GROUP BY telegram_id to prevent duplicates and false multi-day assumptions)
+	// 1. Submissions for this lesson today (GROUP BY telegram_id to prevent duplicates)
 	rows, err := d.db.Query(`
 		SELECT cs.telegram_id, COALESCE(u.first_name, ''), COALESCE(u.username, ''), MAX(cs.score_awarded)
 		FROM challenge_submissions cs
@@ -676,8 +739,20 @@ func FormatStudyContext(sc *StudyContext) string {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("• Bugungi dars mavzusi: #%d: \"%s\"\n", sc.LessonID, sc.LessonTitle))
-	sb.WriteString(fmt.Sprintf("• VAQT VA KURS HOLATI: Bugun kursning birinchi kuni (#%d-dars). Kecha hech qanday dars bo'lmagan, bot faqat bugun ishga tushdi! Shuning uchun 'kecha', 'kechagi dars' deb aytish qat'iyan taqiqlanadi!\n", sc.LessonID))
+	sb.WriteString(fmt.Sprintf("• BUGUNGI SANA VA VAQT: %s, soat %s\n", sc.CurrentDate, sc.CurrentTime))
+	sb.WriteString(fmt.Sprintf("• JORIY KURS BOSQICHI: #%d-dars kuni.\n", sc.LessonID))
+
+	if !sc.MorningSent {
+		sb.WriteString(fmt.Sprintf("• MUHIM JADVAL HOLATI (Ertalabki holat): Bugungi yangi dars (#%d: \"%s\") hali guruhga yuborilmagan! Jadvalimizga ko'ra, ertalabki dars soat 10:00 da avtomatik e'lon qilinadi.\n", sc.LessonID, sc.LessonTitle))
+		if sc.PreviousLessonTitle != "" {
+			sb.WriteString(fmt.Sprintf("• HOZIRGI FAOL VAQT: Kechagi darsni takrorlash vaqti! Kecha o'tilgan dars: \"%s\". Agar o'quvchilar hozir savol berishsa, kechagi mavzu bo'yicha javob bering yoki yangi dars soat 10:00 da boshlanishini ayting.\n", sc.PreviousLessonTitle))
+		} else {
+			sb.WriteString("• HOZIRGI FAOL VAQT: Yangi dars soat 10:00 da boshlanadi.\n")
+		}
+		sb.WriteString(fmt.Sprintf("• QAT'IY QOIDA: Yangi dars (#%d: \"%s\") hali boshlanmagani sababli, uning mazmuni va topshirig'ini SOAT 10:00 GACHA SIR TUTING! O'zingizdan oldinlab yangi mavzuni boshladik deb gapirmang!\n", sc.LessonID, sc.LessonTitle))
+	} else {
+		sb.WriteString(fmt.Sprintf("• BUGUNGI MAVZU: #%d: \"%s\" (Guruhga 10:00 da e'lon qilingan va faol o'rganilmoqda).\n", sc.LessonID, sc.LessonTitle))
+	}
 
 	if sc.LeaderboardSummary != "" {
 		sb.WriteString("• Rasmiy Reyting Jadvali (Bazadagi aniq ballar):\n")
@@ -686,9 +761,12 @@ func FormatStudyContext(sc *StudyContext) string {
 	}
 
 	if sc.ChallengeSent {
-		sb.WriteString("• Kechki kod topshirig'i (Challenge): Guruhga yuborilgan (faol!)\n")
+		sb.WriteString("• Kechki kod topshirig'i (Challenge): Soat 15:00 da guruhga yuborilgan (FAOL!).\n")
+		if sc.DeadlineAnnounced {
+			sb.WriteString("• DIQQAT: Soat 17:30 da bugungi topshiriq muddati (deadline) yakunlangan! Endi kod yuborganlarga tahlil beriladi, lekin reyting balli berilmaydi.\n")
+		}
 		if sc.OfficialChallengeTask != "" {
-			sb.WriteString(fmt.Sprintf("• RASMIY AMALIY TOPSHIRIQ (CHALLENGE):\nSarlavha: \"%s\"\nAniq shart:\n\"\"\"\n%s\n\"\"\"\n(ESLATMA: Agar o'quvchi topshiriq shartini so'rasa, aynan mana shu rasmiy shartni bering! O'zingizdan yangi shart to'qimang!)\n",
+			sb.WriteString(fmt.Sprintf("• RASMIY AMALIY TOPSHIRIQ (CHALLENGE):\nSarlavha: \"%s\"\nAniq shart:\n\"\"\"\n%s\n\"\"\"\n(Agar o'quvchi topshiriq shartini so'rasa, aynan mana shu rasmiy shartni bering!)\n",
 				sc.OfficialChallengeTitle, sc.OfficialChallengeTask))
 		}
 
@@ -714,7 +792,8 @@ func FormatStudyContext(sc *StudyContext) string {
 			}
 		}
 	} else {
-		sb.WriteString("• Kechki kod topshirig'i: Hali guruhga yuborilmagan.\n")
+		sb.WriteString("• Kechki kod topshirig'i (Challenge): Hali guruhga yuborilmagan! U bugun soat 15:00 da e'lon qilinadi.\n")
+		sb.WriteString("• QAT'IY QOIDA: Agar o'quvchi 'topshiriq qani?', 'topshiriq shartini ber' desa, HECH QACHON topshiriq shartini oldindan oshkor qilmang! 'Bugungi amaliy kod topshirig'i reja bo'yicha soat 15:00 da e'lon qilinadi, ungacha nazariyani o'rganib turing' deb javob bering!\n")
 	}
 
 	return sb.String()

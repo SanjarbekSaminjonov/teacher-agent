@@ -2,6 +2,7 @@ package bot
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strings"
 	"sync"
@@ -89,7 +90,7 @@ func (cd *ChatDebouncer) flushEvents(chatID int64) {
 	// 1. If only 1 event, e.g. a single user joined
 	if len(events) == 1 {
 		if events[0].FallbackText != "" {
-			_ = safeSendMarkdownDirect(cd.b.teleBot, target, events[0].FallbackText)
+			_, _ = safeSendMarkdownDirect(cd.b.teleBot, target, events[0].FallbackText)
 		}
 		return
 	}
@@ -105,7 +106,13 @@ func (cd *ChatDebouncer) flushEvents(chatID int64) {
 	if err == nil {
 		if lesson, ok := cd.b.curriculum.GetLesson(state.CurrentLessonID); ok {
 			lessonTitle = lesson.Title
-			sc, err := cd.b.db.GetStudyContext(chatID, lesson.ID, lesson.Title, lesson.Challenge.Title, lesson.Challenge.Task, state.EveningChallengeSent, 0, "")
+			prevLessonTitle := ""
+			if state.CurrentLessonID > 1 {
+				if prevL, ok := cd.b.curriculum.GetLesson(state.CurrentLessonID - 1); ok {
+					prevLessonTitle = fmt.Sprintf("#%d: %s", prevL.ID, prevL.Title)
+				}
+			}
+			sc, err := cd.b.db.GetStudyContext(chatID, lesson.ID, lesson.Title, prevLessonTitle, lesson.Challenge.Title, lesson.Challenge.Task, state.MorningSent, state.AfternoonQuizSent, state.EveningChallengeSent, state.DeadlineAnnounced, 0, "")
 			if err == nil {
 				studyCtxStr = database.FormatStudyContext(sc)
 			}
@@ -120,24 +127,24 @@ func (cd *ChatDebouncer) flushEvents(chatID int64) {
 		log.Printf("Batch summary generatsiyasida xatolik: %v\n", err)
 		for _, e := range events {
 			if e.FallbackText != "" {
-				_ = safeSendMarkdownDirect(cd.b.teleBot, target, e.FallbackText)
+				_, _ = safeSendMarkdownDirect(cd.b.teleBot, target, e.FallbackText)
 			}
 		}
 		return
 	}
 
-	_ = safeSendMarkdownDirect(cd.b.teleBot, target, summary)
+	_, _ = safeSendMarkdownDirect(cd.b.teleBot, target, summary)
 }
 
-func safeSendMarkdownDirect(b *tele.Bot, target tele.Recipient, text string) error {
+func safeSendMarkdownDirect(b *tele.Bot, target tele.Recipient, text string) (*tele.Message, error) {
 	if b == nil {
-		return nil
+		return nil, nil
 	}
 	formatted := MarkdownToTelegramHTML(text)
-	_, err := b.Send(target, formatted, &tele.SendOptions{ParseMode: tele.ModeHTML})
+	sent, err := b.Send(target, formatted, &tele.SendOptions{ParseMode: tele.ModeHTML})
 	if err != nil {
 		log.Printf("HTML send direct xatosi, oddiy matn yuborilmoqda: %v\n", err)
-		_, err = b.Send(target, text)
+		sent, err = b.Send(target, text)
 	}
-	return err
+	return sent, err
 }

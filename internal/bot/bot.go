@@ -57,7 +57,7 @@ func NewBot(cfg *config.Config, db *database.DB, curr *curriculum.Manager, aiCli
 		aiClient:   aiCli,
 	}
 
-	appBot.debouncer = NewChatDebouncer(appBot, 35*time.Second)
+	appBot.debouncer = NewChatDebouncer(appBot, 15*time.Minute)
 	appBot.registerHandlers()
 	return appBot, nil
 }
@@ -334,6 +334,18 @@ func (b *Bot) handleAsk(c tele.Context) error {
 		lessonTitle = lesson.Title
 	}
 
+	prevLessonTitle := ""
+	if state.CurrentLessonID > 1 {
+		if prevL, exists := b.curriculum.GetLesson(state.CurrentLessonID - 1); exists {
+			prevLessonTitle = fmt.Sprintf("#%d: %s", prevL.ID, prevL.Title)
+		}
+	}
+
+	activeLessonTitle := lessonTitle
+	if !state.MorningSent && prevLessonTitle != "" {
+		activeLessonTitle = fmt.Sprintf("%s (Takrorlash vaqti — yangi dars 10:00 da e'lon qilinadi)", prevLessonTitle)
+	}
+
 	replyContext := ""
 	if c.Message().ReplyTo != nil && c.Message().ReplyTo.Text != "" {
 		replyContext = c.Message().ReplyTo.Text
@@ -351,19 +363,14 @@ func (b *Bot) handleAsk(c tele.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 35*time.Second)
 	defer cancel()
 
-	previousNoteText := ""
-	if note, err := b.db.GetRandomUserNote(c.Sender().ID); err == nil && note != nil {
-		previousNoteText = note.Summary
-	}
-
 	studyCtxStr := ""
 	if lesson != nil {
-		if sc, err := b.db.GetStudyContext(c.Chat().ID, lesson.ID, lesson.Title, lesson.Challenge.Title, lesson.Challenge.Task, state.EveningChallengeSent, c.Sender().ID, senderName); err == nil {
+		if sc, err := b.db.GetStudyContext(c.Chat().ID, lesson.ID, lesson.Title, prevLessonTitle, lesson.Challenge.Title, lesson.Challenge.Task, state.MorningSent, state.AfternoonQuizSent, state.EveningChallengeSent, state.DeadlineAnnounced, c.Sender().ID, senderName); err == nil {
 			studyCtxStr = database.FormatStudyContext(sc)
 		}
 	}
 
-	res, err := b.aiClient.AnswerQuestion(ctx, question, lessonTitle, replyContext, chatHistory, previousNoteText, studyCtxStr)
+	res, err := b.aiClient.AnswerQuestion(ctx, question, activeLessonTitle, replyContext, chatHistory, studyCtxStr)
 	if err != nil {
 		if ai.IsQuotaExceeded(err) {
 			return b.handleQuotaExceeded(c)
@@ -371,11 +378,6 @@ func (b *Bot) handleAsk(c tele.Context) error {
 		log.Printf("AI /ask xatosi: %v\n", err)
 		b.NotifyAdminError(fmt.Sprintf("/ask savol: \"%s\"", question), err)
 		return c.Reply("Savolingizga javob shakllantirishda xatolik yuz berdi. Administratorga xabar yuborildi.")
-	}
-
-	if res.DetectedBlunder != "" {
-		_ = b.db.SaveUserNote(c.Sender().ID, "critique", res.DetectedBlunder)
-		log.Printf("📝 Mentor daftarchasiga yangi qayd: User %d -> %s\n", c.Sender().ID, res.DetectedBlunder)
 	}
 
 	_ = b.db.SaveChatMessage(c.Chat().ID, "Teacher Agent", res.Answer, true)
@@ -581,17 +583,24 @@ func (b *Bot) handleText(c tele.Context) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 35*time.Second)
 		defer cancel()
 
-		previousNoteText := ""
-		if note, err := b.db.GetRandomUserNote(sender.ID); err == nil && note != nil {
-			previousNoteText = note.Summary
+		prevLessonTitle := ""
+		if state.CurrentLessonID > 1 {
+			if prevL, exists := b.curriculum.GetLesson(state.CurrentLessonID - 1); exists {
+				prevLessonTitle = fmt.Sprintf("#%d: %s", prevL.ID, prevL.Title)
+			}
+		}
+
+		activeLessonTitle := lesson.Title
+		if !state.MorningSent && prevLessonTitle != "" {
+			activeLessonTitle = fmt.Sprintf("%s (Takrorlash vaqti — yangi dars 10:00 da e'lon qilinadi)", prevLessonTitle)
 		}
 
 		studyCtxStr := ""
-		if sc, err := b.db.GetStudyContext(c.Chat().ID, lesson.ID, lesson.Title, lesson.Challenge.Title, lesson.Challenge.Task, state.EveningChallengeSent, sender.ID, senderName); err == nil {
+		if sc, err := b.db.GetStudyContext(c.Chat().ID, lesson.ID, lesson.Title, prevLessonTitle, lesson.Challenge.Title, lesson.Challenge.Task, state.MorningSent, state.AfternoonQuizSent, state.EveningChallengeSent, state.DeadlineAnnounced, sender.ID, senderName); err == nil {
 			studyCtxStr = database.FormatStudyContext(sc)
 		}
 
-		res, err := b.aiClient.AnswerQuestion(ctx, cleanQuestion, lesson.Title, replyContext, chatHistory, previousNoteText, studyCtxStr)
+		res, err := b.aiClient.AnswerQuestion(ctx, cleanQuestion, activeLessonTitle, replyContext, chatHistory, studyCtxStr)
 		if err != nil {
 			if ai.IsQuotaExceeded(err) {
 				return b.handleQuotaExceeded(c)
@@ -599,11 +608,6 @@ func (b *Bot) handleText(c tele.Context) error {
 			log.Printf("AI savol-javobida xato: %v\n", err)
 			b.NotifyAdminError(fmt.Sprintf("Guruh savoli: \"%s\"", cleanQuestion), err)
 			return c.Reply("Savolingiz bo'yicha javob shakllantirishda xatolik yuz berdi. Administratorga xabar yuborildi.")
-		}
-
-		if res.DetectedBlunder != "" {
-			_ = b.db.SaveUserNote(sender.ID, "critique", res.DetectedBlunder)
-			log.Printf("📝 Mentor daftarchasiga yangi qayd: User %d -> %s\n", sender.ID, res.DetectedBlunder)
 		}
 
 		_ = b.db.SaveChatMessage(c.Chat().ID, "Teacher Agent", res.Answer, true)
@@ -775,6 +779,9 @@ func (b *Bot) handleUserLeft(c tele.Context) error {
 		name = fmt.Sprintf("%s (@%s)", leftUser.FirstName, leftUser.Username)
 	}
 	log.Printf("👋 A'zo guruhdan chiqdi: %s\n", name)
+	if err := b.db.MarkUserLeft(leftUser.ID); err != nil {
+		log.Printf("⚠️ A'zoni 'is_left' deb belgilashda xatolik: %v\n", err)
+	}
 
 	if b.debouncer != nil {
 		b.debouncer.AddEvent(c.Chat().ID, fmt.Sprintf("%s guruhdan chiqib ketdi", name), "")
@@ -792,7 +799,14 @@ func (b *Bot) SendMorningLessonToChat(chatID int64, lesson *curriculum.Lesson) e
 		lesson.ID, b.curriculum.TotalLessons(), lesson.Title, lesson.Theory)
 
 	target := &tele.Chat{ID: chatID}
-	return safeSendMarkdownDirect(b.teleBot, target, msg)
+	sentMsg, err := safeSendMarkdownDirect(b.teleBot, target, msg)
+	if err != nil {
+		return err
+	}
+	if sentMsg != nil {
+		_ = b.teleBot.Pin(sentMsg)
+	}
+	return nil
 }
 
 func (b *Bot) SendQuizToChat(chatID int64, lesson *curriculum.Lesson) error {
@@ -820,6 +834,8 @@ func (b *Bot) SendQuizToChat(chatID int64, lesson *curriculum.Lesson) error {
 	if err != nil {
 		return err
 	}
+
+	_ = b.teleBot.Pin(sentMsg)
 
 	if sentMsg.Poll != nil {
 		state, err := b.db.GetOrCreateGroupState(chatID, "")
@@ -859,6 +875,8 @@ func (b *Bot) SendChallengeToChat(chatID int64, lesson *curriculum.Lesson) error
 		return err
 	}
 
+	_ = b.teleBot.Pin(sentMsg)
+
 	state, err := b.db.GetOrCreateGroupState(chatID, "")
 	if err == nil {
 		state.LastChallengeMessageID = sentMsg.ID
@@ -882,8 +900,61 @@ func (b *Bot) SendNudgeToChat(chatID int64, lesson *curriculum.Lesson) error {
 		"⚠️ *Eslatma: Soat 17:30 dan keyin yuborilgan yechimlar tekshiriladi, ammo reyting balli berilmaydi.*",
 		lesson.ID, lesson.Title)
 
+	// Bugun hali topshirmagan 2 nafar o'quvchini do'stona chaqirish
+	unsubmitted, err := b.db.GetUnsubmittedUsersForToday(lesson.ID, b.cfg.AdminTelegramID, 2)
+	if err == nil && len(unsubmitted) > 0 {
+		var mentions []string
+		for _, u := range unsubmitted {
+			if u.Username != "" {
+				mentions = append(mentions, "@"+u.Username)
+			} else if u.FirstName != "" {
+				mentions = append(mentions, u.FirstName)
+			}
+		}
+		if len(mentions) > 0 {
+			msg += fmt.Sprintf("\n\n🎯 %s — sizlardan ham yechim kutib qolamiz, ozgina vaqt qoldi, qani boshladikmi? 😉", strings.Join(mentions, ", "))
+		}
+	}
+
 	_ = b.db.SaveChatMessage(chatID, "Teacher Agent", msg, true)
-	return safeSendMarkdownDirect(b.teleBot, target, msg)
+	_, err = safeSendMarkdownDirect(b.teleBot, target, msg)
+	return err
+}
+
+func (b *Bot) SendIcebreakerToChat(chatID int64, lesson *curriculum.Lesson) error {
+	if b.teleBot == nil {
+		log.Printf("[SIMULATION] Icebreaker yuborildi chat: %d\n", chatID)
+		return nil
+	}
+
+	inactiveUsers, err := b.db.GetInactiveUsers(b.cfg.AdminTelegramID, 5)
+	if err != nil || len(inactiveUsers) == 0 {
+		return nil
+	}
+
+	var candidate *database.User
+	for i := range inactiveUsers {
+		if inactiveUsers[i].Username != "" {
+			candidate = &inactiveUsers[i]
+			break
+		}
+	}
+	if candidate == nil {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+	defer cancel()
+
+	icebreakerText, err := b.aiClient.GenerateIcebreaker(ctx, candidate.FirstName, candidate.Username, lesson.Title, "")
+	if err != nil || strings.TrimSpace(icebreakerText) == "" {
+		return err
+	}
+
+	target := &tele.Chat{ID: chatID}
+	_ = b.db.SaveChatMessage(chatID, "Teacher Agent", icebreakerText, true)
+	_, err = safeSendMarkdownDirect(b.teleBot, target, icebreakerText)
+	return err
 }
 
 func (b *Bot) SendChallengeDeadline(chatID int64, lesson *curriculum.Lesson) error {
@@ -924,7 +995,14 @@ func (b *Bot) SendChallengeDeadline(chatID int64, lesson *curriculum.Lesson) err
 		lesson.ID, lesson.Title, lbText)
 
 	_ = b.db.SaveChatMessage(chatID, "Teacher Agent", msg, true)
-	return safeSendMarkdownDirect(b.teleBot, target, msg)
+	sentMsg, err := safeSendMarkdownDirect(b.teleBot, target, msg)
+	if err != nil {
+		return err
+	}
+	if sentMsg != nil {
+		_ = b.teleBot.Pin(sentMsg)
+	}
+	return nil
 }
 
 func looksLikeGoCode(text string) bool {
@@ -1184,6 +1262,7 @@ func (b *Bot) SendWeekendWishToChat(chatID int64) error {
 Dam olish kunlaringiz maroqli, sermazmun va fayzli o'tsin! 🏖️
 Haftalik o'rganilgan darslardan so'ng miyaga yaxshilab dam bering. Dushanba kuni ertalab soat 10:00 da yangi mavzular va qiziqarli amaliyotlar bilan darslarimizni davom ettiramiz! 🐹🚀`
 
-	return safeSendMarkdownDirect(b.teleBot, target, msg)
+	_, err := safeSendMarkdownDirect(b.teleBot, target, msg)
+	return err
 }
 

@@ -148,7 +148,7 @@ func TestDatabaseOperations(t *testing.T) {
 	}
 
 	// 9. Test StudyContext
-	studyCtx, err := db.GetStudyContext(-100999, 1, "Mavzu 1", "Chall 1", "Task 1", true, 12345, "Alisher")
+	studyCtx, err := db.GetStudyContext(-100999, 1, "Mavzu 1", "", "Chall 1", "Task 1", true, false, true, false, 12345, "Alisher")
 	if err != nil {
 		t.Fatalf("GetStudyContext xato: %v", err)
 	}

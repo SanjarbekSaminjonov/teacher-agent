@@ -67,6 +67,9 @@ func (s *AgentScheduler) setupCronJobs() {
 	eveningSpec := fmt.Sprintf("0 %d * * 1-5", s.cfg.EveningHour)
 	_, _ = s.cron.AddFunc(eveningSpec, s.DispatchEveningChallenges)
 
+	// Mid-afternoon Icebreaker for quiet/inactive members: 16:00 (Mon-Fri)
+	_, _ = s.cron.AddFunc("0 16 * * 1-5", s.DispatchIcebreaker)
+
 	// Evening Nudge: e.g. 17:00 (Mon-Fri)
 	nudgeSpec := fmt.Sprintf("0 %d * * 1-5", s.cfg.NudgeHour)
 	_, _ = s.cron.AddFunc(nudgeSpec, s.DispatchNudges)
@@ -128,6 +131,7 @@ func (s *AgentScheduler) CheckAndDispatchPending() {
 			state.EveningChallengeSent = false
 			state.NudgeSent = false
 			state.DeadlineAnnounced = false
+			state.IcebreakerSent = false
 			_ = s.db.UpdateGroupState(&state)
 		}
 
@@ -212,6 +216,7 @@ func (s *AgentScheduler) DispatchMorningLessons() {
 			state.EveningChallengeSent = false
 			state.NudgeSent = false
 			state.DeadlineAnnounced = false
+			state.IcebreakerSent = false
 		}
 
 		if state.MorningSent {
@@ -302,6 +307,45 @@ func (s *AgentScheduler) DispatchEveningChallenges() {
 		} else {
 			state.EveningChallengeSent = true
 			_ = s.db.UpdateGroupState(&state)
+		}
+	}
+}
+
+func (s *AgentScheduler) DispatchIcebreaker() {
+	weekday := time.Now().Weekday()
+	if weekday == time.Saturday || weekday == time.Sunday {
+		return
+	}
+
+	log.Println("🎯 16:00 Passiv a'zolar uchun Icebreaker chaqiruvi tekshirilmoqda...")
+
+	states, err := s.db.GetAllGroupStates()
+	if err != nil {
+		return
+	}
+
+	today := time.Now().Format("2006-01-02")
+
+	for _, state := range states {
+		if state.PausedDate == today || state.IcebreakerSent {
+			continue
+		}
+
+		if !state.EveningChallengeSent {
+			continue
+		}
+
+		lesson, exists := s.curriculum.GetLesson(state.CurrentLessonID)
+		if !exists {
+			continue
+		}
+
+		if err := s.bot.SendIcebreakerToChat(state.ChatID, lesson); err == nil {
+			state.IcebreakerSent = true
+			_ = s.db.UpdateGroupState(&state)
+			log.Printf("🎯 Chat %d ga Icebreaker chaqiruvi yuborildi\n", state.ChatID)
+		} else {
+			log.Printf("Icebreaker yuborishda xato (chat %d): %v\n", state.ChatID, err)
 		}
 	}
 }

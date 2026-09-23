@@ -9,6 +9,7 @@ type User struct {
 	Score            int       `json:"score"`
 	QuizzesSolved    int       `json:"quizzes_solved"`
 	ChallengesSolved int       `json:"challenges_solved"`
+	IsLeft           bool      `json:"is_left"`
 	UpdatedAt        time.Time `json:"updated_at"`
 }
 
@@ -26,6 +27,7 @@ type GroupState struct {
 	PausedDate              string    `json:"paused_date"`
 	WeekendWishSent         bool      `json:"weekend_wish_sent"`
 	DeadlineAnnounced       bool      `json:"deadline_announced"`
+	IcebreakerSent          bool      `json:"icebreaker_sent"`
 	UpdatedAt               time.Time `json:"updated_at"`
 }
 
@@ -87,11 +89,17 @@ type SubmitterInfo struct {
 }
 
 type StudyContext struct {
+	CurrentDate            string          `json:"current_date"`
+	CurrentTime            string          `json:"current_time"`
 	LessonID               int             `json:"lesson_id"`
 	LessonTitle            string          `json:"lesson_title"`
+	PreviousLessonTitle    string          `json:"previous_lesson_title"`
+	MorningSent            bool            `json:"morning_sent"`
+	QuizSent               bool            `json:"quiz_sent"`
 	OfficialChallengeTitle string          `json:"official_challenge_title"`
 	OfficialChallengeTask  string          `json:"official_challenge_task"`
 	ChallengeSent          bool            `json:"challenge_sent"`
+	DeadlineAnnounced      bool            `json:"deadline_announced"`
 	TotalSubmissions       int             `json:"total_submissions"`
 	Submitters             []SubmitterInfo `json:"submitters"`
 	UnsubmittedNames       []string        `json:"unsubmitted_names"`

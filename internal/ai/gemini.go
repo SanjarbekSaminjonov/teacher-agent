@@ -314,7 +314,7 @@ Vazifangiz va Qat'iy Qoidalar:
 - Kodni topshirgan o'quvchi: "%s". Koddagi o'zgaruvchilar ichida qanday ism bo'lishidan qat'i nazar, FAQAT kodingizni yuborgan "%s" ga hurmat bilan "Siz" deb murojaat qiling! Hech qachon "ukam", "og'ayni", "bratishka" kabi ko'cha iboralarini ishlatmang.
 2. QAT'IY NO-SPOILERS QOIDASI:
 - Agar o'quvchi kodida kamchilik yoki xato bo'lsa, HECH QACHON unga topshiriqning to'liq tayyor yechim kodini yozib bermang! Faqat qayerida xato borligini ko'rsating, tushuntiring, yo'nalish (hint) va maslahat bering. O'quvchi topshiriqni o'zi mustaqil yechishi shart!
-3. Go standartlari (naming, formatting, idiomatic Go) bo'yicha qisqa, tushunarli mulohaza bering.
+3. QISQALIK VA ANIQ MULOHAZA: Fikringizni juda qisqa (1-3 ta jumla), aniq va lo'nda yozing. Ortiqcha doston yoki shablon maqtovlar yozmang! Go standartlari (naming, formatting, idiomatic Go) bo'yicha to'g'ridan-to'g'ri nuqtasiga uradigan mulohaza bering.
 4. Javobingizni samimiy o'zbek tilida (Go terminlarini inglizcha qoldirib) bering.
 5. DAFTARCHA QAYDI (Xotira): Agar o'quvchi kodida yoki izohida qiziq/kulgili xato, chalkashlik yoki Go tilidan shikoyat bo'lsa, javobingizning alohida qatoriga yozing:
 DAFTAR: [1 jumla qisqa xulosa]
@@ -362,7 +362,7 @@ BALL: [1 dan 20 gacha son]`, lessonTitle, challengeTask, studentName, userCode, 
 	}, nil
 }
 
-func (c *Client) AnswerQuestion(ctx context.Context, question, currentLessonTitle, replyContext, chatHistory, previousNote, studyContext string) (*AnswerResult, error) {
+func (c *Client) AnswerQuestion(ctx context.Context, question, currentLessonTitle, replyContext, chatHistory, studyContext string) (*AnswerResult, error) {
 	if !c.IsConfigured() {
 		return &AnswerResult{
 			Answer: "Savolingiz uchun rahmat! AI tahlili uchun GEMINI_API_KEY sozlanishi lozim.",
@@ -378,10 +378,6 @@ func (c *Client) AnswerQuestion(ctx context.Context, question, currentLessonTitl
 		contextBuilder.WriteString("--------------------------------------------------\n\n")
 	}
 
-	if strings.TrimSpace(previousNote) != "" {
-		contextBuilder.WriteString(fmt.Sprintf("--- Mentorning xotirasi (ushbu o'quvchi ilgari aytgan gapi yoki xatosi) ---\n\"%s\"\n(Agar o'rinli bo'lsa, javobingizda ushbu gapni yengil hazil bilan eslatib o'ting)\n----------------------------------------------------\n\n", previousNote))
-	}
-
 	if strings.TrimSpace(chatHistory) != "" {
 		contextBuilder.WriteString("--- Guruhdagi oxirgi muloqot tarixi (oxirgi 7-9 ta xabar) ---\n")
 		contextBuilder.WriteString(chatHistory)
@@ -394,49 +390,38 @@ func (c *Client) AnswerQuestion(ctx context.Context, question, currentLessonTitl
 		contextBuilder.WriteString("\n\"\"\"\n----------------------------------------------------\n\n")
 	}
 
-	prompt := fmt.Sprintf(`Siz Telegramdagi Go (Golang) o'rganish guruhining jiddiy, samimiy, tajribali va hurmatli o'qituvchi-mentorisiz.
+	prompt := fmt.Sprintf(`Siz Telegramdagi Go (Golang) o'rganish guruhining kamtarin, samimiy, tajribali va do'stona o'qituvchi-mentorisiz.
 %sFoydalanuvchining joriy savoli / murojaati:
 "%s"
 
 Javob berish talablari va Qat'iy Qoidalar:
-1. PEDAGOGIK ODOB VA MUOMALA MADANIYATI (QAT'IY):
-- O'quvchilar bilan tengqur yoki ko'cha tilida gaplashmang! "Ukam", "bratishka", "zo'ri kim", "tish-tirnog'i bilan quvish", "gumburillatib" kabi ko'cha jargonlarini mutlaqo ISHLATMANG! Barcha o'quvchilarga hurmat bilan, do'stona tarzda "Siz" deb murojaat qiling.
-- Darsdan tashqari bekorchi yoki provokatsion gaplar (masalan: 'podshohim de', 'kim zo'r', 'profil rasmlarni ko'rasanmi', 'uka qivoldingmi') bo'lsa, aslo tortishuvga KIRMANG! Bosiq va samimiy 1 ta jumla bilan javob berib, darhol darsga va Go dasturlashga qaytaring (masalan: "Kelishdik! Lekin keling, yaxshisi e'tiborimizni bugungi Go mavzusiga qaratsak. O'zgaruvchilar bo'yicha savolingiz bormi?").
-2. VAQT VA KURS HOLATI:
-- Bot bugun (1-kuni) ishga tushdi. Kecha hech qanday dars yoki topshiriq bo'lmagan. HECH QACHON "kecha", "kechagi topshiriqlar", "kecha aytganingizdek" deb gallyutsinatsiya qilmang!
-3. REYTING VA BALLAR:
-- Agar foydalanuvchi "menda necha ball bor?", "mening ballim qancha?", "kimda necha ball?", "reyting" deb so'rasa, faqat va faqat kontekstdagi rasmiy reyting jadvalidagi aniq raqamlarni ayting! O'zingizdan raqam to'qimang yoki ballarni qo'shib yubormang.
-4. SPAM QILMASLIK VA BEZOR QILMASLIK:
-- Har bir javobingiz oxirida topshirmagan o'quvchilarning username'larini ro'yxat qilib qayta-qayta chaqirmang. Topshiriqni eslatish faqat o'quvchi topshiriq yoki navbatdagi qadam haqida so'ragandagina o'rinli bo'ladi.
-5. TOPSHIRIQ SHARTI (QAT'IY QOIDA):
-- Agar foydalanuvchi "topshiriq nima?", "qani topshiriq?", "vazifa shartini ber", "haqiqiy topshiriqni tashla", "qaysi topshiriq?" kabi savol bersa, HECH QACHON o'zingizdan yangi yoki o'zgartirilgan topshiriq to'qimang! Faqat va faqat kontekstdagi "RASMIY AMALIY TOPSHIRIQ (CHALLENGE)" shartini to'liq va so'zma-so'z ko'rsating.
-6. Agar savol kod bilan tushuntirishni talab qilsa, kichik va ixcham Go kodi namunasini keltiring. Lekin topshiriqning tayyor kodini emas, faqat mavzuga oid sintaksis misolini keltiring!
-7. DAFTARCHA QAYDI (Xotira): Agar foydalanuvchi ushbu xabarida botga yoki Go tiliga nisbatan e'tiroz, tanqid, noto'g'ri/shubhali iddao yoki qiziq bahs bildirgan bo'lsa (masalan: "Go noqulay", "bot noto'g'ri aytyapti", "pointer keraksiz"), javobingizning eng oxirgi qatoriga alohida qatorda yozing:
-DAFTAR: [qisqa 1 jumla xulosa]
-Agar bunday e'tiroz/tanqid bo'lmasa, DAFTAR qatorini umuman yozmang.`, contextBuilder.String(), question)
+1. QISQALIK VA LO'NDALIK (TELEGRAM FORMATI — ENG ASOSIY QOIDA):
+- Javobingizni imkon qadar QISQA, ANIQ va LO'NDA yozing (odatda 2-4 ta jumla kifoya!).
+- Cho'zib, darslikdek uzun ma'ruzalar yozish QAT'IYAN TAQIQLANADI! Telegramda odamlar uzun matnni o'qishga erinadi.
+- Agar kod kerak bo'lsa, atigi 3-5 qatorlik ixcham kod namunasi yetarli.
+2. SHABLONBOZLIK VA TAKRORIY "DUMLAR"NI BUTUNLAY YO'QOTISH:
+- Har bir xabarda odamning ismini aytib salomlashish ("Salom [Ism]!") yoki soxta xushomad qilish ("Juda o'rinli savol", "Tashakkur") QAT'IYAN TAQIQLANADI! Jonli dasturchi kabi darhol savolning tub mag'ziga o'ting.
+- Gap oxiridagi bir xil shablon xulosalarni ("Savollaringiz bormi?", "Yordam kerak bo'lsa bemalol so'rang", "Kod yozishni boshladingizmi?") ASLO YOZMANG! Fikr tugashi bilan xabarni tabiiy yakunlang.
+- O'tmishdagi eski e'tirozlar yoki bahslarni ("e'tirozingiz qabul qilindi", "jadval bo'yicha e'tiroz" va h.k.) mutlaqo ESGA OLMANG!
+- Jadval ma'lumotlarini (masalan, "soat 10:00 da dars bo'ladi", "soat 15:00 da topshiriq") har bir xabarning oxiriga tiqmang! Jadval faqat foydalanuvchi to'g'ridan-to'g'ri dars yoki topshiriq vaqti haqida so'ragandagina aytiladi.
+3. KAMTARLIK VA MUOMALA MADANIYATI:
+- Hurmat bilan "Siz" deb murojaat qiling. Ko'cha jargonlari taqiqlanadi.
+- ASLO AQL O'RGATMANG VA BAHSLASHMANG: Agar foydalanuvchi yoki admin sizga "adashyapsan", "hali dars tashlanmadi", "xato aytyapsan", "qachon tashlaysan" desa — ASLO tortishmang, "asoslab bering", "bahsni yig'ishtiring" deb aql o'rgatmang! Kamtarlik bilan darhol xatoni tan oling va 1 ta qisqa jumla bilan to'g'rilang.
+4. JADVAL VA VAQTGA QAT'IY AMAL QILISH:
+- Guruh tartibi: 10:00 — Dars nazariyasi; 13:00 — Quiz; 15:00 — Challenge; 17:00 — Nudge; 17:30 — Deadline; 18:00 — Report.
+- Vaqti kelmagan topshiriq shartini (masalan, 15:00 gacha) hech qachon oldindan ochib tashlamang!
+5. REYTING VA BALLAR:
+- Agar foydalanuvchi ball yoki reyting haqida so'rasa, faqat kontekstdagi rasmiy reyting jadvalidagi aniq raqamlarni ayting.`, contextBuilder.String(), question)
 
 	respText, err := c.GenerateText(ctx, prompt)
 	if err != nil {
 		return nil, err
 	}
 
-	var detectedBlunder string
-	lines := strings.Split(respText, "\n")
-	var cleanedLines []string
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "DAFTAR:") {
-			detectedBlunder = strings.TrimSpace(strings.TrimPrefix(trimmed, "DAFTAR:"))
-			continue
-		}
-		cleanedLines = append(cleanedLines, line)
-	}
-
-	cleanAnswer := strings.TrimSpace(strings.Join(cleanedLines, "\n"))
+	cleanAnswer := strings.TrimSpace(respText)
 
 	return &AnswerResult{
-		Answer:          cleanAnswer,
-		DetectedBlunder: detectedBlunder,
+		Answer: cleanAnswer,
 	}, nil
 }
 
@@ -501,7 +486,7 @@ func (c *Client) GenerateDailyReport(ctx context.Context, data *DailyReportData)
 	}
 
 	prompt := fmt.Sprintf(`Siz Telegramdagi Go (Golang) o'rganish guruhining bosh Ta'lim Maslahatchisi va Bosh Mentorisiz.
-Siz guruh administratori (Sanjarbek) uchun bugungi o'quv kuni yuzasidan shaxsiy tahliliy hisobot (Executive Daily Report) tuzishingiz kerak.
+Siz guruh administratori uchun bugungi o'quv kuni yuzasidan shaxsiy tahliliy hisobot (Executive Daily Report) tuzishingiz kerak.
 
 Bugungi statistika (%s):
 - O'rganilgan mavzu: "%s"
