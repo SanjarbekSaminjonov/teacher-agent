@@ -1,4 +1,4 @@
-module learn-go-bot
+module teacher-agent
 
 go 1.23.4
 

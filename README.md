@@ -1,97 +1,119 @@
-# 🐹 Learn Go Bot — Telegram O'quv Guruhi Uchun Avtonom Agent
+# 🐹 Teacher Agent — Avtonom Go O'qituvchi Agent
 
-Ushbu bot Go dasturlash tilini o'rganayotgan Telegram guruh a'zolarini faollashtirish, ularga Go tilini noldan boshlab tizimli o'rgatish va guruhda interaktiv o'quv muhitini yaratish uchun mo'ljallangan **avtonom o'qituvchi-agent**dir.
-
-Bot server talab qilmaydi — uni o'zingizning mahalliy kompyuteringizda (Linux / macOS / Windows) osongina ishga tushirishingiz mumkin.
+Telegram guruhida Go (Golang) dasturlash tilini tizimli va interaktiv tarzda o'rgatuvchi **avtonom agent-bot**. Har kuni mustaqil ravishda dars beradi, viktorina o'tkazadi, kod topshiriqlarini Gemini AI orqali tekshiradi va o'quvchilar faolligini rag'batlantiradi.
 
 ---
 
-## 🌟 Asosiy Imkoniyatlar
+## 🌟 Imkoniyatlar
 
-1. **Tizimli Go O'quv Dasturi (10 ta bosqich):**
-   - 01. Go Asoslari, O'zgaruvchilar va Ma'lumot turlari
-   - 02. Boshqaruv konstruksiyalari: `if`, `switch` va yagona `for` tsikli
-   - 03. To'plamlar: Massivlar, Slaytlar (`append`, `make`) va Lug'atlar (`map`)
-   - 04. Funksiyalar, Ko'p qiymat qaytarish va `defer` (LIFO)
-   - 05. Ko'rsatkichlar (`pointers`, `*`, `&`)
-   - 06. Strukturalar va Metodlar (`struct`, Value vs Pointer receivers)
-   - 07. Interfeyslar va Polimorfizm (`interface`, `any`, type assertion)
-   - 08. Xatolar bilan ishlash (`error`, wrapping `%w`, `errors.Is`, `errors.As`)
-   - 09. Konkurentlik: Goroutinalar, WaitGroup va Kanallar (`channels`, `select`)
-   - 10. Standart Kutubxona va REST API (`net/http`, `encoding/json`)
+### Avtonom Kunlik Jadval (Dushanba–Juma)
+| Vaqt | Tadbir |
+|------|--------|
+| 🌅 10:00 | Yangi mavzu — nazariy dars |
+| 🥪 13:00 | Telegram Quiz (Poll) |
+| 💻 15:00 | Amaliy kod topshirig'i (Challenge) |
+| 👀 17:00 | Deadline eslatmasi |
+| 🛑 17:30 | Qabul yakunlandi + kunlik reyting |
+| 📊 18:00 | Admin uchun tahliliy hisobot |
 
-2. **Avtonom Kunlik Reja (Kun davomida avtomatik taqsimot):**
-   - 🌅 **09:00 (Ertalab):** Yangi mavzu bo'yicha qisqa va amaliy nazariy dars.
-   - 🥪 **14:00 (Tushda):** Mavzuni mustahkamlash uchun rasmiy Telegram Quiz (Poll).
-   - 🌙 **19:00 (Kechqurun):** 10-15 daqiqalik amaliy kod topshirig'i (Challenge).
-   - 👀 **21:00 (Nudge / Eslatma):** Agar hech kim topshiriq yechimini yubormasa, bot samimiy savollar bilan guruhni bahsga tortadi.
+### Gemini AI Integratsiyasi
+- Foydalanuvchi kodi Gemini AI tomonidan tekshiriladi — xatolar, maslahat va ball beriladi
+- O'quvchilar savollariga pedagogik qoidalar asosida javob beradi (spoiler bermaydi, "Siz" deb murojaat qiladi)
+- Multi-API kalit pool — bir kalit tugasa, keyingisiga avtomatik o'tadi
 
-3. **Google Gemini AI Integratsiyasi (Kod Tahlili va Mentorlik):**
-   - O'quvchilar guruhda topshiriq kodi yoki savol yozganda, Gemini AI kodni tekshiradi, xatolarni ko'rsatadi, to'g'ri yozish bo'yicha maslahat beradi va ball taqdim etadi.
+### Ballar Tizimi
+- Quiz to'g'ri javobi: **+10 ball**
+- Kod topshirig'i: **+15...+20 ball** (AI bahosi asosida)
+- Qayta topshirishda faqat **eng yaxshi natija** hisoblanadi (resubmission support)
+- 17:30 dan keyin yuborilgan kodlar tekshiriladi, lekin ball berilmaydi
 
-4. **Geymifikatsiya va Reyting (Leaderboard):**
-   - Viktorinaga to'g'ri javob uchun: **+10 ball**.
-   - Kod topshirig'i topshirgani uchun: **+15...+20 ball**.
-   - Guruh a'zolari `/leaderboard` buyrug'i orqali eng faol ishtirokchilar TOP-10 ro'yxatini ko'rishlari mumkin.
+### O'quv Dasturi — 10 ta bosqich
+| # | Mavzu |
+|---|-------|
+| 1 | Go Asoslari: O'zgaruvchilar va Ma'lumot Turlari |
+| 2 | Boshqaruv Konstruksiyalari: `if`, `switch`, `for` |
+| 3 | To'plamlar: Massivlar, Slicelar, Maplar |
+| 4 | Funksiyalar, Ko'p qiymat qaytarish, `defer` |
+| 5 | Ko'rsatkichlar (`*`, `&`) |
+| 6 | Strukturalar va Metodlar |
+| 7 | Interfeyslar va Polimorfizm |
+| 8 | Xatolar bilan ishlash (`error`, `%w`, `errors.Is`) |
+| 9 | Konkurentlik: Goroutinalar, Kanallar, `select` |
+| 10 | Standart Kutubxona va REST API |
 
 ---
 
-## 🚀 O'rnatish va Ishga Tushirish
+## 🚀 O'rnatish
 
-### 1. Talablar
-- Go (1.23 yoki undan yuqori). Agar kompyuteringizda yo'q bo'lsa, `~/.local/go/bin/go` allaqachon tayyorlangan.
+### Talablar
+- Go 1.22+
+- Telegram Bot Token ([BotFather](https://t.me/BotFather))
+- Google Gemini API kalit ([AI Studio](https://aistudio.google.com/))
 
-### 2. Sozlash (.env fayli)
-Loyihaning ildiz papkasidagi `.env` faylini oching va quyidagi qiymatlarni kiriting:
+### 1. Sozlash
+
+```bash
+cp .env.example .env
+```
+
+`.env` faylini to'ldiring:
 
 ```env
-# 1. Telegram Bot Token (t.me/BotFather orqali olinadi):
-TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrSTUvwxYZ
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+ADMIN_TELEGRAM_ID=your_telegram_id_here   # @userinfobot orqali bilib oling
+TELEGRAM_GROUP_ID=-1001234567890           # guruh ID (ixtiyoriy)
 
-# 2. Google Gemini API Kaliti (https://aistudio.google.com/ orqali bepul olinadi):
-GEMINI_API_KEY=AIzaSyD...
+# Bir yoki bir nechta Gemini API kalit (vergul bilan):
+GEMINI_API_KEYS=AIzaSyD_key1,AIzaSyD_key2
 
-# 3. Darslar o'tiladigan Telegram guruh ID raqami:
-# (Agar kiritmasangiz, bot guruhga qo'shilganda o'zi aniqlab oladi)
-TELEGRAM_GROUP_ID=-1001234567890
+# Dars soatlari (ixtiyoriy):
+MORNING_HOUR=10
+AFTERNOON_HOUR=13
+EVENING_HOUR=15
+NUDGE_HOUR=17
 
-# Dars soatlari (ixtiyoriy o'zgartirish mumkin):
-MORNING_HOUR=9
-AFTERNOON_HOUR=14
-EVENING_HOUR=19
-NUDGE_HOUR=21
-
-# Tokensiz lokal sinash uchun true, haqiqiy bot uchun false:
 DRY_RUN=false
 ```
 
-### 3. Botni Ishga Tushirish
-
-Terminalda quyidagi buyruqni bajaring:
+### 2. Ishga tushirish
 
 ```bash
-go run ./cmd/bot
+go build -o teacher-agent ./cmd/bot
+./teacher-agent
 ```
 
-Yoki binar fayl sifatida yig'ib olish (compile):
+### 3. Systemd service (Linux, fon rejimida)
 
 ```bash
-go build -o learn-go-bot ./cmd/bot
-./learn-go-bot
+# Misol service fayli ~/.config/systemd/user/learn-go-bot.service
+systemctl --user enable --now learn-go-bot
+systemctl --user status learn-go-bot
 ```
 
 ---
 
-## 🤖 Guruhda Ishlatiladigan Buyruqlar
+## 💬 Buyruqlar
 
-- `/start` — Bot bilan tanishuv va xush kelibsiz xabari.
-- `/today` — Bugungi o'tilayotgan mavzuni ko'rish.
-- `/quiz` — Bugungi mavzu bo'yicha viktorinani ochish.
-- `/challenge` — Bugungi amaliy kod topshirig'ini ko'rish.
-- `/leaderboard` — Guruh a'zolarining reytingini (ballarini) ko'rish.
-- `/progress` — Kursning umumiy o'zlashtirilish darajasi (progress bar).
-- `/next` — Guruh tayyor bo'lganda navbatdagi darsga qo'lda o'tkazish.
-- `/help` — Qo'llanma va yordam.
+### Guruh buyruqlari
+| Buyruq | Vazifasi |
+|--------|----------|
+| `/start` | Bot bilan tanishuv |
+| `/today` | Bugungi mavzuni ko'rish |
+| `/quiz` | Bugungi viktorina |
+| `/challenge` | Bugungi kod topshirig'i |
+| `/ask <savol>` | Go bo'yicha AI ga savol berish |
+| `/leaderboard` | TOP-10 reyting |
+| `/progress` | Kurs bo'yicha progress |
+| `/help` | Qo'llanma |
+
+### Admin buyruqlari
+| Buyruq | Vazifasi |
+|--------|----------|
+| `/report` | Kunlik hisobotni hozir ko'rish |
+| `/ai_logs` | Oxirgi AI so'rovlari logi |
+| `/pause_today` | Bugungi darsni to'xtatish |
+| `/resume_today` | Darsni qayta tiklash |
+| `/next` | Qo'lda keyingi darsga o'tish |
 
 ---
 
@@ -99,18 +121,53 @@ go build -o learn-go-bot ./cmd/bot
 
 ```
 learn-go-bot/
-├── cmd/
-│   └── bot/main.go            # Dasturning kirish nuqtasi
+├── cmd/bot/
+│   └── main.go                    # Kirish nuqtasi, graceful shutdown
 ├── internal/
-│   ├── config/config.go       # .env sozlamalarini boshqarish
-│   ├── database/              # SQLite (foydalanuvchilar, ballar, holat)
-│   ├── curriculum/            # Darslar boshqaruvi va YAML fayllari
-│   │   └── lessons/           # 10 ta darsning nazariyasi, quiz va amaliyoti
-│   ├── ai/gemini.go           # Google Gemini AI integratsiyasi
-│   ├── bot/bot.go             # Telegram bot hodisalari va buyruqlari
-│   └── scheduler/             # Avtonom cron jadval (Morning, Quiz, Challenge, Nudge)
-├── .env                       # Sozlamalar fayli
-├── .env.example               # Namuna sozlamalar
-├── go.mod                     # Go modullari
-└── README.md                  # Hujjat
+│   ├── ai/
+│   │   └── gemini.go              # Gemini API client, multi-key pool
+│   ├── bot/
+│   │   ├── bot.go                 # Handler-lar, scoring logikasi
+│   │   ├── buffer.go              # Chat debouncer (AI batch summary)
+│   │   └── format.go              # Markdown → Telegram HTML konverter
+│   ├── config/
+│   │   └── config.go              # .env yuklash
+│   ├── curriculum/
+│   │   ├── curriculum.go          # YAML darslarni yuklash
+│   │   └── lessons/               # 10 ta dars (YAML formatida)
+│   ├── database/
+│   │   ├── db.go                  # SQLite operatsiyalari
+│   │   └── models.go              # Struct modellar
+│   └── scheduler/
+│       └── agent_scheduler.go     # Cron jadval + missed dispatch recovery
+├── .env.example
+├── .gitignore
+└── go.mod
 ```
+
+---
+
+## 🗄️ Ma'lumotlar Bazasi
+
+SQLite (`bot.db`) — quyidagi jadvallar:
+
+| Jadval | Maqsad |
+|--------|--------|
+| `users` | Foydalanuvchilar, ballar, statistika |
+| `group_state` | Guruh holati, bugungi flags |
+| `challenge_submissions` | Kod topshiriqlari tarixi |
+| `quiz_attempts` | Quiz javoblari |
+| `chat_history` | Oxirgi xabarlar (AI kontekst uchun) |
+| `user_notes` | Mentor daftarchasi (AI xotirasi) |
+| `ai_logs` | Barcha Gemini API so'rovlari |
+
+---
+
+## ⚙️ Texnik Tafsilotlar
+
+- **Til:** Go 1.22+
+- **Telegram:** [telebot.v3](https://gopkg.in/telebot.v3)
+- **AI:** Google Gemini API (REST, multi-model fallback)
+- **DB:** SQLite ([modernc.org/sqlite](https://modernc.org/sqlite) — CGO yo'q)
+- **Cron:** [robfig/cron](https://github.com/robfig/cron) — `time.Local` zonasida
+- **Timezone:** Scheduler server mahalliy vaqtida ishlaydi

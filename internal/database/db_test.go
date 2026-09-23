@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"learn-go-bot/internal/database"
+	"teacher-agent/internal/database"
 )
 
 func TestDatabaseOperations(t *testing.T) {

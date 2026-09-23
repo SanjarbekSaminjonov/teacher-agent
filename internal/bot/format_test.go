@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"learn-go-bot/internal/bot"
+	"teacher-agent/internal/bot"
 )
 
 func TestMarkdownToTelegramHTML(t *testing.T) {

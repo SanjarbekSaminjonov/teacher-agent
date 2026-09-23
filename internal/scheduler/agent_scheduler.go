@@ -5,10 +5,10 @@ import (
 	"log"
 	"time"
 
-	"learn-go-bot/internal/bot"
-	"learn-go-bot/internal/config"
-	"learn-go-bot/internal/curriculum"
-	"learn-go-bot/internal/database"
+	"teacher-agent/internal/bot"
+	"teacher-agent/internal/config"
+	"teacher-agent/internal/curriculum"
+	"teacher-agent/internal/database"
 
 	"github.com/robfig/cron/v3"
 )

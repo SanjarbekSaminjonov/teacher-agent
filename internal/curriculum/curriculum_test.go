@@ -3,7 +3,7 @@ package curriculum_test
 import (
 	"testing"
 
-	"learn-go-bot/internal/curriculum"
+	"teacher-agent/internal/curriculum"
 )
 
 func TestCurriculumManager(t *testing.T) {

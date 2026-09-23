@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"learn-go-bot/internal/ai"
-	"learn-go-bot/internal/bot"
-	"learn-go-bot/internal/config"
-	"learn-go-bot/internal/curriculum"
-	"learn-go-bot/internal/database"
+	"teacher-agent/internal/ai"
+	"teacher-agent/internal/bot"
+	"teacher-agent/internal/config"
+	"teacher-agent/internal/curriculum"
+	"teacher-agent/internal/database"
 )
 
 func TestBuildDailyExecutiveReport(t *testing.T) {

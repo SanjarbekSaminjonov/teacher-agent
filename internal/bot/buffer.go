@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"learn-go-bot/internal/database"
+	"teacher-agent/internal/database"
 
 	tele "gopkg.in/telebot.v3"
 )
