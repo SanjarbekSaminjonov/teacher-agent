@@ -109,6 +109,7 @@ func (b *Bot) registerHandlers() {
 	b.teleBot.Handle(tele.OnAddedToGroup, b.handleGroupJoined)
 	b.teleBot.Handle(tele.OnUserJoined, b.handleUserJoined)
 	b.teleBot.Handle(tele.OnUserLeft, b.handleUserLeft)
+	b.teleBot.Handle(tele.OnMigration, b.handleMigration)
 }
 
 func (b *Bot) handleStart(c tele.Context) error {
@@ -786,6 +787,21 @@ func (b *Bot) handleUserLeft(c tele.Context) error {
 	if b.debouncer != nil {
 		b.debouncer.AddEvent(c.Chat().ID, fmt.Sprintf("%s guruhdan chiqib ketdi", name), "")
 	}
+	return nil
+}
+
+func (b *Bot) handleMigration(c tele.Context) error {
+	from := c.Message().MigrateFrom
+	to := c.Message().MigrateTo
+	if to == 0 {
+		to = c.Chat().ID
+	}
+	log.Printf("🔄 Telegram guruh migratsiyasi aniqlandi: %d -> %d\n", from, to)
+	if err := b.db.MigrateGroupState(from, to); err != nil {
+		log.Printf("⚠️ Guruh holatini migratsiya qilishda xato: %v\n", err)
+		return err
+	}
+	log.Printf("✅ Guruh holati yangi superguruhga muvaffaqiyatli ko'chirildi: %d\n", to)
 	return nil
 }
 

@@ -140,12 +140,23 @@ func (s *AgentScheduler) CheckAndDispatchPending() {
 			continue
 		}
 
-		// Check what should be sent based on current time
+		// If current hour is past 18:00, active study day is over.
+		// We do NOT dump missed daytime curriculum or old deadlines into the group late at night.
+		if currentHour >= 18 {
+			if !state.DeadlineAnnounced && state.EveningChallengeSent {
+				state.DeadlineAnnounced = true
+				_ = s.db.UpdateGroupState(&state)
+			}
+			continue
+		}
+
+		// Daytime catch-up: only dispatch at most ONE step per check to avoid message spam cascades
 		if currentHour >= s.cfg.MorningHour && !state.MorningSent {
 			if err := s.bot.SendMorningLessonToChat(state.ChatID, lesson); err == nil {
 				state.MorningSent = true
 				_ = s.db.UpdateGroupState(&state)
 			}
+			continue // Stop here, do not cascade into quiz/challenge in the same run
 		}
 
 		if currentHour >= s.cfg.AfternoonHour && state.MorningSent && !state.AfternoonQuizSent {
@@ -153,6 +164,7 @@ func (s *AgentScheduler) CheckAndDispatchPending() {
 				state.AfternoonQuizSent = true
 				_ = s.db.UpdateGroupState(&state)
 			}
+			continue // Stop here, do not cascade into challenge in the same run
 		}
 
 		if currentHour >= s.cfg.EveningHour && state.AfternoonQuizSent && !state.EveningChallengeSent {
@@ -160,20 +172,22 @@ func (s *AgentScheduler) CheckAndDispatchPending() {
 				state.EveningChallengeSent = true
 				_ = s.db.UpdateGroupState(&state)
 			}
+			continue // Stop here, do not cascade into deadline in the same run
 		}
 
 		nowMin := time.Now().Minute()
-		// Check pending Nudge (if >= 17:00 and < 17:30)
+		// Check pending Nudge (only if between 17:00 and 17:30)
 		if currentHour == s.cfg.NudgeHour && nowMin < 30 && state.EveningChallengeSent && !state.NudgeSent {
 			if err := s.bot.SendNudgeToChat(state.ChatID, lesson); err == nil {
 				state.NudgeSent = true
 				_ = s.db.UpdateGroupState(&state)
 				log.Printf("✅ Qolib ketgan 17:00 Nudge eslatmasi yuborildi: Chat %d\n", state.ChatID)
 			}
+			continue
 		}
 
-		// Check pending Deadline (if >= 17:30)
-		if (currentHour > 17 || (currentHour == 17 && nowMin >= 30)) && state.EveningChallengeSent && !state.DeadlineAnnounced {
+		// Check pending Deadline (only if between 17:30 and 18:00)
+		if currentHour == 17 && nowMin >= 30 && state.EveningChallengeSent && !state.DeadlineAnnounced {
 			if err := s.bot.SendChallengeDeadline(state.ChatID, lesson); err == nil {
 				state.DeadlineAnnounced = true
 				_ = s.db.UpdateGroupState(&state)

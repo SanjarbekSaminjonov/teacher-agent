@@ -306,6 +306,44 @@ func (d *DB) GetOrCreateGroupState(chatID int64, title string) (*GroupState, err
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	state, err := d.getGroupStateUnsafe(chatID)
+	if err == nil {
+		return state, nil
+	}
+
+	// If chatID is not found, check if there's an existing group_state (e.g. from before supergroup migration)
+	var existingOldID int64
+	checkErr := d.db.QueryRow(`SELECT chat_id FROM group_state WHERE chat_id != ? LIMIT 1`, chatID).Scan(&existingOldID)
+	if checkErr == nil && existingOldID != 0 {
+		_ = d.migrateGroupStateUnsafe(existingOldID, chatID)
+		if migrated, mErr := d.getGroupStateUnsafe(chatID); mErr == nil {
+			return migrated, nil
+		}
+	}
+
+	now := time.Now()
+	newState := GroupState{
+		ChatID:            chatID,
+		GroupTitle:        title,
+		CurrentLessonID:   1,
+		LessonDate:        "",
+		PausedDate:        "",
+		WeekendWishSent:   false,
+		DeadlineAnnounced: false,
+		IcebreakerSent:    false,
+		UpdatedAt:         now,
+	}
+	_, insertErr := d.db.Exec(`
+		INSERT INTO group_state (chat_id, group_title, current_lesson_id, lesson_date, paused_date, weekend_wish_sent, deadline_announced, icebreaker_sent, updated_at)
+		VALUES (?, ?, 1, '', '', 0, 0, 0, ?)
+	`, chatID, title, now)
+	if insertErr != nil {
+		return nil, insertErr
+	}
+	return &newState, nil
+}
+
+func (d *DB) getGroupStateUnsafe(chatID int64) (*GroupState, error) {
 	var state GroupState
 	err := d.db.QueryRow(`
 		SELECT chat_id, group_title, current_lesson_id, lesson_date, morning_sent,
@@ -318,33 +356,77 @@ func (d *DB) GetOrCreateGroupState(chatID int64, title string) (*GroupState, err
 		&state.NudgeSent, &state.LastQuizPollID, &state.LastChallengeMessageID,
 		&state.PausedDate, &state.WeekendWishSent, &state.DeadlineAnnounced, &state.IcebreakerSent, &state.UpdatedAt,
 	)
-
-	if err == sql.ErrNoRows {
-		now := time.Now()
-		state = GroupState{
-			ChatID:            chatID,
-			GroupTitle:        title,
-			CurrentLessonID:   1,
-			LessonDate:        "",
-			PausedDate:        "",
-			WeekendWishSent:   false,
-			DeadlineAnnounced: false,
-			IcebreakerSent:    false,
-			UpdatedAt:         now,
-		}
-		_, insertErr := d.db.Exec(`
-			INSERT INTO group_state (chat_id, group_title, current_lesson_id, lesson_date, paused_date, weekend_wish_sent, deadline_announced, icebreaker_sent, updated_at)
-			VALUES (?, ?, 1, '', '', 0, 0, 0, ?)
-		`, chatID, title, now)
-		if insertErr != nil {
-			return nil, insertErr
-		}
-		return &state, nil
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
-
 	return &state, nil
+}
+
+func (d *DB) MigrateGroupState(oldChatID, newChatID int64) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.migrateGroupStateUnsafe(oldChatID, newChatID)
+}
+
+func (d *DB) migrateGroupStateUnsafe(oldChatID, newChatID int64) error {
+	if oldChatID == 0 || newChatID == 0 || oldChatID == newChatID {
+		return nil
+	}
+
+	var oldState GroupState
+	err := d.db.QueryRow(`
+		SELECT chat_id, group_title, current_lesson_id, lesson_date, morning_sent,
+		       afternoon_quiz_sent, evening_challenge_sent, nudge_sent,
+		       last_quiz_poll_id, last_challenge_message_id, paused_date, weekend_wish_sent, deadline_announced, icebreaker_sent
+		FROM group_state WHERE chat_id = ?
+	`, oldChatID).Scan(
+		&oldState.ChatID, &oldState.GroupTitle, &oldState.CurrentLessonID, &oldState.LessonDate,
+		&oldState.MorningSent, &oldState.AfternoonQuizSent, &oldState.EveningChallengeSent,
+		&oldState.NudgeSent, &oldState.LastQuizPollID, &oldState.LastChallengeMessageID,
+		&oldState.PausedDate, &oldState.WeekendWishSent, &oldState.DeadlineAnnounced, &oldState.IcebreakerSent,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Update newChatID if it exists, otherwise insert
+	_, err = d.db.Exec(`
+		INSERT INTO group_state (chat_id, group_title, current_lesson_id, lesson_date, morning_sent,
+		                         afternoon_quiz_sent, evening_challenge_sent, nudge_sent,
+		                         last_quiz_poll_id, last_challenge_message_id, paused_date,
+		                         weekend_wish_sent, deadline_announced, icebreaker_sent, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(chat_id) DO UPDATE SET
+			group_title = excluded.group_title,
+			current_lesson_id = excluded.current_lesson_id,
+			lesson_date = excluded.lesson_date,
+			morning_sent = excluded.morning_sent,
+			afternoon_quiz_sent = excluded.afternoon_quiz_sent,
+			evening_challenge_sent = excluded.evening_challenge_sent,
+			nudge_sent = excluded.nudge_sent,
+			last_quiz_poll_id = excluded.last_quiz_poll_id,
+			last_challenge_message_id = excluded.last_challenge_message_id,
+			paused_date = excluded.paused_date,
+			weekend_wish_sent = excluded.weekend_wish_sent,
+			deadline_announced = excluded.deadline_announced,
+			icebreaker_sent = excluded.icebreaker_sent,
+			updated_at = excluded.updated_at
+	`, newChatID, oldState.GroupTitle, oldState.CurrentLessonID, oldState.LessonDate,
+		oldState.MorningSent, oldState.AfternoonQuizSent, oldState.EveningChallengeSent,
+		oldState.NudgeSent, oldState.LastQuizPollID, oldState.LastChallengeMessageID,
+		oldState.PausedDate, oldState.WeekendWishSent, oldState.DeadlineAnnounced, oldState.IcebreakerSent, time.Now())
+
+	if err != nil {
+		return err
+	}
+
+	// Delete oldChatID from group_state
+	_, _ = d.db.Exec(`DELETE FROM group_state WHERE chat_id = ?`, oldChatID)
+
+	// Update chat_history chat_id from old to new
+	_, _ = d.db.Exec(`UPDATE chat_history SET chat_id = ? WHERE chat_id = ?`, newChatID, oldChatID)
+
+	return nil
 }
 
 func (d *DB) GetAllGroupStates() ([]GroupState, error) {

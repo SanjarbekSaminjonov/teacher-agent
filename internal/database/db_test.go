@@ -171,4 +171,16 @@ func TestDatabaseOperations(t *testing.T) {
 	if maxScore != 15 {
 		t.Errorf("GetMaxScoreForLesson kutilgan 15, lekin olindi %d", maxScore)
 	}
+
+	// 11. Test MigrateGroupState
+	if err := db.MigrateGroupState(-100999, -100888); err != nil {
+		t.Fatalf("MigrateGroupState xato: %v", err)
+	}
+	migratedState, err := db.GetOrCreateGroupState(-100888, "")
+	if err != nil {
+		t.Fatalf("GetOrCreateGroupState migrated xato: %v", err)
+	}
+	if migratedState.ChatID != -100888 || migratedState.CurrentLessonID != 2 {
+		t.Errorf("Migrated state kutilgandek emas: %+v", migratedState)
+	}
 }
